@@ -1,0 +1,82 @@
+import React from 'react';
+import { PRIO } from '../utils/constants';
+
+export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging, onEdit }) {
+  const doneCount = task.subtasks.filter(s => s.done).length;
+  const hasSubs = task.subtasks.length > 0;
+
+  const toggleDone = (e) => {
+    e.stopPropagation();
+    if (hasSubs && !task.done) {
+      onUpdate({ done: true, subtasks: task.subtasks.map(s => ({ ...s, done: true })) });
+    } else if (hasSubs && task.done) {
+      onUpdate({ done: false, subtasks: task.subtasks.map(s => ({ ...s, done: false })) });
+    } else {
+      onUpdate({ done: !task.done });
+    }
+  };
+
+  const updateSubtask = (id, patch, e) => {
+    if (e) e.stopPropagation();
+    const subs = task.subtasks.map(s => s.id === id ? { ...s, ...patch } : s);
+    const allDone = subs.length > 0 && subs.every(s => s.done);
+    onUpdate({ subtasks: subs, done: allDone });
+  };
+
+  const cls = 'nmd-task ' + PRIO[task.priority || 'none'].cls + (task.done ? ' done' : '') + (dragging ? ' dragging' : '');
+
+  return (
+    <div
+      className={cls}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', task.id);
+        onDragStart(task.id);
+      }}
+      onDragEnd={onDragEnd}
+      onClick={() => onEdit(task.id)}
+      style={{ cursor: 'pointer' }}
+    >
+      <div className="nmd-task-row">
+        <button
+          className={'nmd-check' + (task.done ? ' checked' : '')}
+          onClick={toggleDone}
+          title={task.done ? 'Mark not done' : 'Mark done'}
+          style={{ cursor: 'pointer' }}
+        >
+          {task.done && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M4 12l5 5L20 6" /></svg>}
+        </button>
+        <div className="nmd-task-title">{task.title}</div>
+      </div>
+      {hasSubs && (
+        <>
+          <div className="nmd-subtasks">
+            {task.subtasks.map(s => (
+              <div key={s.id} className={'nmd-subtask' + (s.done ? ' done' : '')}>
+                <button
+                  className={'nmd-check' + (s.done ? ' checked' : '')}
+                  onClick={(e) => updateSubtask(s.id, { done: !s.done }, e)}
+                >
+                  {s.done && <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M4 12l5 5L20 6" /></svg>}
+                </button>
+                <span className="nmd-subtask-text">{s.text}</span>
+              </div>
+            ))}
+          </div>
+          <div className="nmd-task-progress">
+            <div className="nmd-task-progress-fill" style={{ width: (doneCount / task.subtasks.length * 100) + '%' }} />
+          </div>
+        </>
+      )}
+      <div className="nmd-task-meta">
+        {task.priority && task.priority !== 'none' && (
+          <>
+            <span className={'nmd-task-prio-dot nmd-' + PRIO[task.priority].cls} />
+            <span style={{ marginLeft: 4 }}>{PRIO[task.priority].label}</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
