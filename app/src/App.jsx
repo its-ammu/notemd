@@ -214,6 +214,8 @@ function App() {
           meetingsByDate={meetingsByDate}
           setMeetingsByDate={setMeetingsByDate}
           showToast={showToast}
+          notebooks={notebooks}
+          onNavigateToPage={(nbId, pageId) => { setActiveSel({ nbId, pageId }); setTab('notebooks'); }}
         />
       )}
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageLinkPicker from './PageLinkPicker';
 
 const REPEAT_OPTIONS = [
   { value: 'none', label: 'No repeat' },
@@ -7,18 +8,19 @@ const REPEAT_OPTIONS = [
   { value: 'biweekly', label: 'Every 2 weeks' },
 ];
 
-export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, onDeleteOccurrence, onDeleteFuture, onClose }) {
+export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, onDeleteOccurrence, onDeleteFuture, onClose, notebooks, onNavigateToPage }) {
   const [title, setTitle] = useState(meeting.title);
   const [time, setTime] = useState(meeting.time || '');
   const [duration, setDuration] = useState(meeting.duration || '30');
   const [repeat, setRepeat] = useState(meeting.repeat || 'none');
   const [notes, setNotes] = useState(meeting.notes || '');
+  const [linkedPageId, setLinkedPageId] = useState(meeting.linkedPageId || null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const isRecurringInstance = meeting.id && (meeting._recurring || (meeting.repeat && meeting.repeat !== 'none'));
 
   const save = () => {
-    onUpdate({ title: title.trim() || 'Untitled meeting', time, duration, repeat, notes });
+    onUpdate({ title: title.trim() || 'Untitled meeting', time, duration, repeat, notes, linkedPageId });
     onClose();
   };
 
@@ -97,6 +99,16 @@ export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, on
               placeholder="Agenda, links, etc."
               className="nmd-mtg-input"
               style={{ minHeight: 56, resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="nmd-mtg-field-label">Linked page</span>
+            <PageLinkPicker
+              notebooks={notebooks || []}
+              value={linkedPageId}
+              onChange={setLinkedPageId}
+              onNavigate={onNavigateToPage}
             />
           </div>
         </div>

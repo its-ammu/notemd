@@ -44,6 +44,7 @@ export async function fetchAllData() {
       done: !!t.done,
       priority: t.priority,
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+      linkedPageId: t.linked_page_id || null,
       created: new Date(t.created_at).getTime(),
     });
   });
@@ -58,6 +59,7 @@ export async function fetchAllData() {
       duration: String(m.duration ?? 30),
       repeat: m.repeat,
       notes: m.notes || '',
+      linkedPageId: m.linked_page_id || null,
     });
   });
 
@@ -108,6 +110,7 @@ function flattenTasks(tasksByDate, userId) {
         priority: t.priority || 'none',
         position: i,
         subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+        linked_page_id: t.linkedPageId || null,
       });
     });
   });
@@ -127,6 +130,7 @@ function flattenMeetings(meetingsByDate, userId) {
         duration: parseInt(m.duration, 10) || 30,
         repeat: m.repeat || 'none',
         notes: m.notes || '',
+        linked_page_id: m.linkedPageId || null,
       });
     });
   });

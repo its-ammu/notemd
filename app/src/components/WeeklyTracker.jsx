@@ -6,7 +6,7 @@ import { startOfWeek, addDays, fmtDate, fmtRange } from '../utils/time';
 import { expandRecurringMeetings } from '../utils/meetings';
 import { PRIO } from '../utils/constants';
 
-export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast }) {
+export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage }) {
   const [weekStart, setWeekStart] = useState(() => {
     const stored = localStorage.getItem('nmd_week');
     return stored ? startOfWeek(new Date(stored)) : startOfWeek(new Date());
@@ -286,6 +286,8 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
             onDelete={() => { deleteTask(editingTask.dateKey, task.id); setEditingTask(null); }}
             onMove={(toKey) => { moveTask(task.id, toKey); setEditingTask(null); }}
             onClose={() => setEditingTask(null)}
+            notebooks={notebooks}
+            onNavigateToPage={onNavigateToPage}
           />
         );
       })()}
@@ -295,6 +297,8 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
         <MeetingDialog
           meeting={meetingDialogData.meeting}
           dateKey={meetingDialogData.dateKey}
+          notebooks={notebooks}
+          onNavigateToPage={onNavigateToPage}
           onUpdate={(patch) => {
             if (meetingDialogData.isNew) {
               const id = crypto.randomUUID();

@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import { PRIO } from '../utils/constants';
 import { fmtDate, addDays } from '../utils/time';
 import DatePicker from './DatePicker';
+import PageLinkPicker from './PageLinkPicker';
 
-export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, onClose }) {
+export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, onClose, notebooks, onNavigateToPage }) {
   const [pickerPos, setPickerPos] = useState(null);
   const pickerBtnRef = useRef(null);
   const pickerRef = useRef(null);
@@ -98,6 +99,15 @@ export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, 
                 />
               ))}
             </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 12, color: 'var(--fg3)', width: 60 }}>Linked</span>
+            <PageLinkPicker
+              notebooks={notebooks || []}
+              value={task.linkedPageId}
+              onChange={(pageId) => onUpdate({ linkedPageId: pageId })}
+              onNavigate={onNavigateToPage}
+            />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <span style={{ fontSize: 12, color: 'var(--fg3)' }}>Subtasks</span>
