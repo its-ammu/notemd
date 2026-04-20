@@ -1,26 +1,21 @@
-export function slugify(text) {
-  return (text || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-') || 'heading';
-}
+import GithubSlugger from 'github-slugger';
 
-export function makeUniqueSlugger() {
-  const counts = {};
-  return (text) => {
-    const base = slugify(text);
-    const n = counts[base] || 0;
-    counts[base] = n + 1;
-    return n === 0 ? base : `${base}-${n}`;
-  };
+/* Strip inline markdown so the text we slugify is the same plain text
+ * rehype-slug sees inside the rendered heading (otherwise links, bold, etc.
+ * leak into the slug). */
+function stripInlineMarkdown(s) {
+  return s
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 }
 
 export function parseHeadings(source) {
   if (!source) return [];
   const lines = source.split('\n');
-  const slug = makeUniqueSlugger();
+  const slugger = new GithubSlugger();
   const out = [];
   let inCode = false;
   for (const line of lines) {
@@ -28,8 +23,8 @@ export function parseHeadings(source) {
     if (inCode) continue;
     const m = /^(#{1,4}) (.+)$/.exec(line);
     if (!m) continue;
-    const text = m[2].trim();
-    out.push({ level: m[1].length, text, id: slug(text) });
+    const text = stripInlineMarkdown(m[2].trim());
+    out.push({ level: m[1].length, text, id: slugger.slug(text) });
   }
   return out;
 }

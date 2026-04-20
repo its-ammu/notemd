@@ -33,6 +33,9 @@
   --ink-alpha-08:     rgba(34, 34, 34, 0.08);
   --ink-alpha-12:     rgba(34, 34, 34, 0.12);
 
+  /* Paper texture color */
+  --paper-texture:    rgba(34, 34, 34, 0.15);
+
   /* Semantic — Surfaces */
   --bg:               var(--paper);
   --bg-raised:        var(--paper-raised);
@@ -110,6 +113,41 @@
   --sidebar-w:    280px;
   --content-max:  680px;
   --editor-pad:   64px;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  /* Paper (backgrounds) */
+  --paper:            #1a1a1a;
+  --paper-raised:     #242424;
+  --paper-deep:       #141414;
+
+  /* Ink (text) */
+  --ink-strong:       #f0f0f0;
+  --ink:              #d0d0d0;
+  --ink-muted:        #909090;
+  --ink-subtle:       #606060;
+  --ink-faint:        #404040;
+
+  /* Alpha tones */
+  --ink-alpha-04:     rgba(255, 255, 255, 0.04);
+  --ink-alpha-08:     rgba(255, 255, 255, 0.08);
+  --ink-alpha-12:     rgba(255, 255, 255, 0.12);
+
+  /* Blockquote gradient */
+  --blockquote-grad-a: rgba(200, 158, 244, 0.1);
+  --blockquote-grad-b: rgba(81, 103, 244, 0.06);
+
+  /* Borders */
+  --border:           #2a2a2a;
+  --border-strong:    #3a3a3a;
+
+  /* Shadows */
+  --shadow-float:   0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-overlay: 0 16px 48px rgba(0, 0, 0, 0.4);
+
+  /* Paper texture color */
+  --paper-texture:  rgba(255, 255, 255, 0.12);
 }
 
 /* Prose styles */
@@ -193,12 +231,67 @@
   padding: var(--space-4);
   overflow-x: auto;
   margin: var(--space-4) 0;
+  position: relative;
 }
 .prose pre code, .code-block code {
   background: none;
   border: none;
   padding: 0;
 }
+
+/* ── Syntax highlighting — highlight.js tokens → accent palette ──── */
+.hljs { color: var(--fg2); background: transparent; }
+
+/* Keywords, control-flow */
+.hljs-keyword,
+.hljs-selector-tag { color: var(--accent-blue); font-weight: var(--fw-medium); }
+
+/* Strings, regex */
+.hljs-string,
+.hljs-regexp { color: var(--accent-rose); }
+
+/* Numbers, booleans, null */
+.hljs-number,
+.hljs-literal { color: var(--accent-purple); }
+
+/* Built-ins, types, classes */
+.hljs-built_in,
+.hljs-type,
+.hljs-title.class_,
+.hljs-title.function_ { color: var(--accent-deep); }
+
+/* Function/method calls */
+.hljs-title { color: var(--accent-deep); }
+
+/* Attributes, properties */
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable { color: var(--fg1); }
+
+/* Comments, docstrings */
+.hljs-comment,
+.hljs-doctag { color: var(--fg3); font-style: italic; }
+
+/* Meta, preprocessor */
+.hljs-meta,
+.hljs-meta .hljs-keyword { color: var(--fg3); }
+
+/* Punctuation, operators */
+.hljs-punctuation,
+.hljs-operator { color: var(--fg3); }
+
+/* Tags (HTML/XML) */
+.hljs-tag { color: var(--fg3); }
+.hljs-name { color: var(--accent-blue); }
+
+/* Params, template variables */
+.hljs-params { color: var(--fg2); }
+.hljs-template-variable,
+.hljs-subst { color: var(--accent-rose); }
+
+/* Emphasis, strong inside code */
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: var(--fw-semibold); }
 
 .prose blockquote, .blockquote {
   margin: var(--space-5) 0;
@@ -213,6 +306,8 @@
   font-style: italic;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
+.prose blockquote > p { margin: 0; }
+.prose blockquote > p + p { margin-top: var(--space-2); }
 
 .prose hr, .hr {
   border: none;
@@ -235,11 +330,13 @@
   border-collapse: collapse;
   margin: var(--space-5) 0;
   font-size: var(--text-sm);
+  background: var(--bg);
 }
 .prose th, .prose td {
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   text-align: left;
+  background: var(--bg);
 }
 .prose th {
   background: var(--bg-raised);

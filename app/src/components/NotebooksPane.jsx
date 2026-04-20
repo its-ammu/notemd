@@ -1,8 +1,47 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import MarkdownView from './MarkdownView';
+import MarkdownEditor from './MarkdownEditor';
 import { NB_COLORS } from '../utils/constants';
 import { relTime } from '../utils/time';
 import { parseHeadings } from '../utils/markdown';
+
+// Long-press handlers for mobile equivalent of right-click.
+// Returns props to spread on a touchable element. The handler is called
+// with { clientX, clientY } when the touch holds still for ~500ms.
+function makeLongPressProps(handler, timerRef) {
+  return {
+    onTouchStart: (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      const x = t.clientX, y = t.clientY;
+      timerRef.current = { id: setTimeout(() => {
+        // Trigger a subtle haptic cue when available.
+        if (navigator.vibrate) navigator.vibrate(12);
+        handler({ clientX: x, clientY: y });
+        timerRef.current = { id: null, fired: true };
+      }, 500), startX: x, startY: y, fired: false };
+    },
+    onTouchMove: (e) => {
+      const info = timerRef.current;
+      if (!info || info.fired) return;
+      const t = e.touches[0];
+      if (!t) return;
+      if (Math.hypot(t.clientX - info.startX, t.clientY - info.startY) > 8) {
+        clearTimeout(info.id); timerRef.current = null;
+      }
+    },
+    onTouchEnd: (e) => {
+      const info = timerRef.current;
+      if (!info) return;
+      if (info.fired) { e.preventDefault(); }
+      else { clearTimeout(info.id); }
+      timerRef.current = null;
+    },
+    onTouchCancel: () => {
+      if (timerRef.current) { clearTimeout(timerRef.current.id); timerRef.current = null; }
+    },
+  };
+}
 
 function makeSnippet(body, q) {
   if (!body || !q) return null;
@@ -30,6 +69,8 @@ function makeSnippet(body, q) {
 export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setActiveSel }) {
   const [openIds, setOpenIds] = useState(() => new Set(notebooks.map(n => n.id).slice(0, 3)));
   const [query, setQuery] = useState('');
+  const [tagFilters, setTagFilters] = useState([]);
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [creatingNb, setCreatingNb] = useState(false);
   const [newNbName, setNewNbName] = useState('');
   const [menuState, setMenuState] = useState(null);
@@ -39,6 +80,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('nmd_nb_sidebar') === 'collapsed');
   const [tocOpen, setTocOpen] = useState(false);
   const previewRef = useRef(null);
+  const longPressRef = useRef(null);
 
   useEffect(() => { localStorage.setItem('nmd_view', view); }, [view]);
   useEffect(() => {
@@ -111,12 +153,28 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
 
   const headings = useMemo(() => parseHeadings(activePage?.body || ''), [activePage?.body]);
 
+  // Collect all unique tags across all notebooks
+  const allTags = useMemo(() => {
+    const tags = new Set();
+    notebooks.forEach(nb => nb.pages.forEach(p => (p.tags || []).forEach(t => tags.add(t.toLowerCase()))));
+    return Array.from(tags).sort();
+  }, [notebooks]);
+
+  const toggleTagFilter = (tag) => {
+    setTagFilters(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
   const scrollToHeading = (id) => {
-    const root = previewRef.current;
-    if (!root) return;
-    const el = root.querySelector('#' + CSS.escape(id));
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTocOpen(false);
+    // Wait for the drawer to unmount so layout settles, otherwise the
+    // fixed-position drawer can intercept scroll on mobile.
+    requestAnimationFrame(() => {
+      const root = previewRef.current;
+      if (!root) return;
+      const el = root.querySelector('#' + CSS.escape(id));
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   return (
@@ -140,8 +198,65 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
         </div>
         <div className="nmd-search">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input placeholder="Find in notes" value={query} onChange={e => setQuery(e.target.value)} />
+          <input
+            placeholder="Find in notes"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+          {allTags.length > 0 && (
+            <div className="nmd-tag-dropdown-wrap">
+              <button
+                className={'nmd-tag-dropdown-btn' + (tagFilters.length > 0 ? ' has-filter' : '')}
+                onClick={() => setTagDropdownOpen(v => !v)}
+                aria-label="Filter by tags"
+                title="Filter by tags"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                  <circle cx="7" cy="7" r="1.5" fill="currentColor" />
+                </svg>
+                {tagFilters.length > 0 && <span className="nmd-tag-badge">{tagFilters.length}</span>}
+              </button>
+              {tagDropdownOpen && (
+                <>
+                  <div className="nmd-tag-dropdown-backdrop" onClick={() => setTagDropdownOpen(false)} />
+                  <div className="nmd-tag-dropdown">
+                    <div className="nmd-tag-dropdown-header">
+                      <span>Filter by tags</span>
+                      {tagFilters.length > 0 && (
+                        <button onClick={() => setTagFilters([])}>Clear all</button>
+                      )}
+                    </div>
+                    <div className="nmd-tag-dropdown-list">
+                      {allTags.map(tag => (
+                        <label key={tag} className="nmd-tag-dropdown-item">
+                          <input
+                            type="checkbox"
+                            checked={tagFilters.includes(tag)}
+                            onChange={() => toggleTagFilter(tag)}
+                          />
+                          <span>{tag}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
+        {tagFilters.length > 0 && (
+          <div className="nmd-tag-filter-bar">
+            <span className="nmd-tag-filter-label">Tags:</span>
+            {tagFilters.map(tag => (
+              <span key={tag} className="nmd-tag-filter-tag" onClick={() => toggleTagFilter(tag)}>
+                {tag}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </span>
+            ))}
+            <button onClick={() => setTagFilters([])} className="nmd-tag-filter-clear">Clear</button>
+          </div>
+        )}
         <div className="nmd-note-count">
           {notebooks.length} {notebooks.length === 1 ? 'notebook' : 'notebooks'} · {notebooks.reduce((a, b) => a + b.pages.length, 0)} pages
         </div>
@@ -166,34 +281,57 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
         <div className="nmd-nb">
           {(() => {
             const q = query.trim().toLowerCase();
-            const visibleNotebooks = q
-              ? notebooks.filter(nb =>
-                  nb.name.toLowerCase().includes(q) ||
-                  nb.pages.some(p => (p.title + ' ' + p.body).toLowerCase().includes(q))
-                )
+            const hasTagFilter = tagFilters.length > 0;
+            const hasFilter = q || hasTagFilter;
+
+            // Filter pages by tags (must have ALL selected tags)
+            const filterByTags = (pages) => {
+              if (!hasTagFilter) return pages;
+              return pages.filter(p => p.tags && tagFilters.every(tf => p.tags.some(t => t.toLowerCase() === tf)));
+            };
+
+            const visibleNotebooks = hasFilter
+              ? notebooks.filter(nb => {
+                  if (hasTagFilter) {
+                    const tagPages = filterByTags(nb.pages);
+                    if (tagPages.length > 0) return true;
+                  }
+                  if (q) {
+                    return nb.name.toLowerCase().includes(q) ||
+                      nb.pages.some(p => (p.title + ' ' + p.body).toLowerCase().includes(q));
+                  }
+                  return hasTagFilter ? false : true;
+                })
               : notebooks;
-            if (q && visibleNotebooks.length === 0) {
+            if (hasFilter && visibleNotebooks.length === 0) {
               return (
                 <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--fg4)' }}>
-                  No matches for "{query}"
+                  {hasTagFilter ? `No pages with selected tags` : `No matches for "${query}"`}
                 </div>
               );
             }
             return visibleNotebooks.map(nb => {
-            const open = q ? true : openIds.has(nb.id);
+            const open = hasFilter ? true : openIds.has(nb.id);
             const nbNameMatches = q && nb.name.toLowerCase().includes(q);
-            const pages = q && !nbNameMatches
-              ? nb.pages.filter(p => (p.title + ' ' + p.body).toLowerCase().includes(q))
-              : nb.pages;
+            let pages = nb.pages;
+            if (hasTagFilter) pages = filterByTags(pages);
+            if (q && !nbNameMatches) pages = pages.filter(p => (p.title + ' ' + p.body).toLowerCase().includes(q));
             return (
               <div key={nb.id}>
                 <button
                   className="nmd-nb-row"
-                  onClick={() => toggleNb(nb.id)}
+                  onClick={() => {
+                    if (longPressRef.current?.fired) { longPressRef.current = null; return; }
+                    toggleNb(nb.id);
+                  }}
                   onContextMenu={e => {
                     e.preventDefault();
                     setMenuState({ x: e.clientX, y: e.clientY, nbId: nb.id });
                   }}
+                  {...makeLongPressProps(
+                    ({ clientX, clientY }) => setMenuState({ x: clientX, y: clientY, nbId: nb.id }),
+                    longPressRef,
+                  )}
                 >
                   <span className={'nmd-nb-chev' + (open ? ' open' : '')}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 6 6 6-6 6" /></svg>
@@ -229,16 +367,37 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                         <button
                           key={p.id}
                           className={'nmd-page-row' + (p.id === activePage?.id ? ' sel' : '') + (snippet ? ' with-snippet' : '')}
-                          onClick={() => openPage(nb.id, p.id)}
+                          onClick={() => {
+                            if (longPressRef.current?.fired) { longPressRef.current = null; return; }
+                            openPage(nb.id, p.id);
+                          }}
                           onContextMenu={e => {
                             e.preventDefault(); e.stopPropagation();
                             setMenuState({ x: e.clientX, y: e.clientY, nbId: nb.id, pageId: p.id });
                           }}
+                          {...makeLongPressProps(
+                            ({ clientX, clientY }) => setMenuState({ x: clientX, y: clientY, nbId: nb.id, pageId: p.id }),
+                            longPressRef,
+                          )}
                         >
                           <div className="nmd-page-row-main">
                             <span className="nmd-page-title">{p.title || 'Untitled'}</span>
                             <span className="nmd-page-meta">{relTime(p.updated)}</span>
                           </div>
+                          {p.tags && p.tags.length > 0 && (
+                            <div className="nmd-page-tags">
+                              {p.tags.slice(0, 3).map(t => (
+                                <span
+                                  key={t}
+                                  className={'nmd-page-tag clickable' + (tagFilters.includes(t.toLowerCase()) ? ' active' : '')}
+                                  onClick={e => { e.stopPropagation(); toggleTagFilter(t.toLowerCase()); }}
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                              {p.tags.length > 3 && <span className="nmd-page-tag-more">+{p.tags.length - 3}</span>}
+                            </div>
+                          )}
                           {snippet && <div className="nmd-page-snippet">{snippet}</div>}
                         </button>
                       );
@@ -310,30 +469,62 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                 <button className={view === 'source' ? 'active' : ''} onClick={() => setView('source')}>Edit</button>
               </div>
             </header>
-            <div className={'nmd-editor ' + (view === 'source' ? 'nmd-mode-split' : 'nmd-mode-preview')}>
-              {view === 'source' && (
-                <div className="nmd-pane nmd-pane-write">
-                  <textarea
+            <div className="nmd-tags-bar">
+              {(activePage.tags || []).map(tag => (
+                <span
+                  key={tag}
+                  className={'nmd-tag clickable' + (tagFilters.includes(tag.toLowerCase()) ? ' active' : '')}
+                  onClick={() => toggleTagFilter(tag.toLowerCase())}
+                >
+                  {tag}
+                  <button
+                    className="nmd-tag-remove"
+                    onClick={e => { e.stopPropagation(); updatePage({ tags: (activePage.tags || []).filter(t => t !== tag) }); }}
+                    aria-label={`Remove tag ${tag}`}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </span>
+              ))}
+              <input
+                className="nmd-tag-input"
+                placeholder="+ Add tag"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && e.target.value.trim()) {
+                    const newTag = e.target.value.trim().toLowerCase();
+                    const existing = activePage.tags || [];
+                    if (!existing.includes(newTag)) {
+                      updatePage({ tags: [...existing, newTag] });
+                    }
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </div>
+            <div className={'nmd-editor ' + (view === 'source' ? 'nmd-mode-write' : 'nmd-mode-preview')}>
+              {view === 'source' ? (
+                <div className={'nmd-pane nmd-pane-write nmd-paper ' + (activeNb.paper || 'plain')}>
+                  <MarkdownEditor
                     value={activePage.body}
-                    onChange={e => updatePage({ body: e.target.value })}
-                    spellCheck={false}
-                    placeholder={'# Start typing\n\nYour words. On your machine.'}
+                    onChange={body => updatePage({ body })}
+                    placeholder="# Start typing..."
                   />
                 </div>
+              ) : (
+                <div
+                  ref={previewRef}
+                  className={'nmd-pane nmd-pane-preview nmd-paper ' + (activeNb.paper || 'plain')}
+                >
+                  {activePage.body.trim() ? (
+                    <MarkdownView source={activePage.body} />
+                  ) : (
+                    <div style={{ color: 'var(--fg4)', fontSize: 14, lineHeight: 1.6, maxWidth: 600 }}>
+                      <p style={{ fontSize: 15, color: 'var(--fg3)' }}>Empty page.</p>
+                      <p>Switch to <b style={{ color: 'var(--fg2)' }}>Edit</b> to start writing in markdown.</p>
+                    </div>
+                  )}
+                </div>
               )}
-              <div
-                ref={previewRef}
-                className={'nmd-pane nmd-pane-preview nmd-paper ' + (activeNb.paper || 'plain')}
-              >
-                {activePage.body.trim() ? (
-                  <MarkdownView source={activePage.body} />
-                ) : (
-                  <div style={{ color: 'var(--fg4)', fontSize: 14, lineHeight: 1.6, maxWidth: 600 }}>
-                    <p style={{ fontSize: 15, color: 'var(--fg3)' }}>Empty page.</p>
-                    <p>Switch to <b style={{ color: 'var(--fg2)' }}>Edit</b> to start writing in markdown.</p>
-                  </div>
-                )}
-              </div>
             </div>
             {view === 'rendered' && headings.length > 0 && (
               <>

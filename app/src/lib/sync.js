@@ -20,6 +20,7 @@ export async function fetchAllData() {
       id: p.id,
       title: p.title || '',
       body: p.body || '',
+      tags: Array.isArray(p.tags) ? p.tags : [],
       created: new Date(p.created_at).getTime(),
       updated: new Date(p.updated_at).getTime(),
     });
@@ -86,6 +87,7 @@ function flattenPages(notebooks, userId) {
         notebook_id: nb.id,
         title: p.title || '',
         body: p.body || '',
+        tags: Array.isArray(p.tags) ? p.tags : [],
         position: i,
       });
     });
