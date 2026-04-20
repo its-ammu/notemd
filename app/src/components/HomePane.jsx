@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { fmtDate, relTime, startOfWeek, addDays } from '../utils/time';
 import { getMeetingsForDay, expandRecurringMeetings } from '../utils/meetings';
+import EmptyState from './EmptyState';
 
 function greeting() {
   const h = new Date().getHours();
@@ -96,10 +97,15 @@ export default function HomePane({
             </div>
           )}
 
+          {todayTasks.length === 0 && todayMeetings.length === 0 && (
+            <EmptyState type="todayEmpty" onAction={() => onGoToTab('tracker')} />
+          )}
+
+          {(todayTasks.length > 0 || todayMeetings.length > 0) && (
           <div className="nmd-home-sub">
             <h3>Tasks</h3>
             {todayTasks.length === 0 ? (
-              <div className="nmd-home-empty">Nothing scheduled for today.</div>
+              <div className="nmd-home-empty">No tasks for today.</div>
             ) : (
               <ul className="nmd-home-list">
                 {todayTasks.map(t => (
@@ -123,6 +129,7 @@ export default function HomePane({
               </ul>
             )}
           </div>
+          )}
         </section>
 
         <section className="nmd-home-card">
@@ -131,7 +138,7 @@ export default function HomePane({
             <button className="nmd-home-link" onClick={() => onGoToTab('notebooks')}>All notebooks →</button>
           </div>
           {recentPages.length === 0 ? (
-            <div className="nmd-home-empty">No pages yet. Create one to get started.</div>
+            <EmptyState type="recentPages" onAction={() => onGoToTab('notebooks')} />
           ) : (
             <ul className="nmd-home-list nmd-home-pages">
               {recentPages.map(p => (

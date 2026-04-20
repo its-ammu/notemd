@@ -5,6 +5,7 @@ import MeetingDialog from './MeetingDialog';
 import { startOfWeek, addDays, fmtDate, fmtRange } from '../utils/time';
 import { expandRecurringMeetings } from '../utils/meetings';
 import { PRIO } from '../utils/constants';
+import { HelpIcon } from './Tooltip';
 
 export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage }) {
   const [weekStart, setWeekStart] = useState(() => {
@@ -241,6 +242,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           )}
           {byPrio.high > 0 && <span className="nmd-pill" title="Open high-priority"><span className="nmd-task-prio-dot nmd-prio-high" style={{ marginRight: 5 }} /><b>{byPrio.high}</b> high</span>}
           {byPrio.med > 0 && <span className="nmd-pill"><span className="nmd-task-prio-dot nmd-prio-med" style={{ marginRight: 5 }} /><b>{byPrio.med}</b> med</span>}
+          <HelpIcon tip="Drag tasks between days. Click tasks to edit priority, add subtasks, or link to pages. Meetings can repeat daily, weekly, or biweekly." position="bottom" />
         </div>
       </header>
 
@@ -251,7 +253,6 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           return (
             <DayColumn
               key={key}
-              dayIdx={i}
               date={d}
               tasks={getTasks(d)}
               meetings={getMeetings(d)}
@@ -259,7 +260,6 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               isWeekend={dow === 0 || dow === 6}
               onAddTask={(title) => addTask(key, title)}
               onUpdateTask={(id, patch) => updateTask(key, id, patch)}
-              onDeleteTask={(id) => deleteTask(key, id)}
               onDropTask={(id) => moveTask(id, key)}
               onDragStart={setDraggingId}
               onDragEnd={() => setDraggingId(null)}

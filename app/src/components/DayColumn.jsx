@@ -44,7 +44,7 @@ function MeetingCard({ meeting, onClick }) {
   );
 }
 
-export default function DayColumn({ dayIdx, date, tasks, meetings, isToday, isWeekend, onAddTask, onUpdateTask, onDeleteTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onAddMeeting, onEditMeeting }) {
+export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onAddMeeting, onEditMeeting }) {
   const [adding, setAdding] = useState(false);
   const [addText, setAddText] = useState('');
   const [copied, setCopied] = useState(false);
@@ -58,7 +58,9 @@ export default function DayColumn({ dayIdx, date, tasks, meetings, isToday, isWe
   };
 
   const copyDay = () => {
-    const dayLabel = DAY_NAMES[dayIdx] + ' ' + date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const dow = date.getDay();
+    const dayNameIndex = dow === 0 ? 6 : dow - 1;
+    const dayLabel = DAY_NAMES[dayNameIndex] + ' ' + date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const lines = [dayLabel];
 
     // Tasks
@@ -88,13 +90,15 @@ export default function DayColumn({ dayIdx, date, tasks, meetings, isToday, isWe
     const text = lines.join('\n');
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
-      showToast(`Copied ${DAY_NAMES[dayIdx]}'s entries`);
+      showToast(`Copied ${DAY_NAMES[dayNameIndex]}'s entries`);
       setTimeout(() => setCopied(false), 1500);
     });
   };
 
   const dateNum = date.getDate();
   const monthLetter = date.toLocaleDateString(undefined, { month: 'short' }).toLowerCase();
+  const dayOfWeek = date.getDay(); // 0 = Sunday
+  const dayNameIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to Mon=0 index
   const sortedMeetings = [...meetings].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   return (
@@ -111,7 +115,7 @@ export default function DayColumn({ dayIdx, date, tasks, meetings, isToday, isWe
     >
       <div className="nmd-day-header">
         <div className="nmd-day-labels">
-          <span className="nmd-day-name">{DAY_NAMES[dayIdx]}</span>
+          <span className="nmd-day-name">{DAY_NAMES[dayNameIdx]}</span>
           <span className="nmd-day-num">
             {dateNum}
             <span style={{ fontSize: 11, color: 'var(--fg4)', fontWeight: 400, marginLeft: 4, fontFamily: 'var(--font-mono)' }}>{monthLetter}</span>

@@ -4,6 +4,8 @@ import MarkdownEditor from './MarkdownEditor';
 import { NB_COLORS } from '../utils/constants';
 import { relTime } from '../utils/time';
 import { parseHeadings } from '../utils/markdown';
+import EmptyState from './EmptyState';
+import { HelpIcon } from './Tooltip';
 
 // Long-press handlers for mobile equivalent of right-click.
 // Returns props to spread on a touchable element. The handler is called
@@ -303,12 +305,11 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                   return hasTagFilter ? false : true;
                 })
               : notebooks;
-            if (hasFilter && visibleNotebooks.length === 0) {
-              return (
-                <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--fg4)' }}>
-                  {hasTagFilter ? `No pages with selected tags` : `No matches for "${query}"`}
-                </div>
-              );
+            if (visibleNotebooks.length === 0) {
+              if (hasFilter) {
+                return <EmptyState type="search" />;
+              }
+              return <EmptyState type="notebooks" onAction={() => setCreatingNb(true)} />;
             }
             return visibleNotebooks.map(nb => {
             const open = hasFilter ? true : openIds.has(nb.id);
@@ -468,6 +469,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                 <button className={view === 'rendered' ? 'active' : ''} onClick={() => setView('rendered')}>Read</button>
                 <button className={view === 'source' ? 'active' : ''} onClick={() => setView('source')}>Edit</button>
               </div>
+              <HelpIcon tip="Read mode renders your markdown. Edit mode lets you write. Use # for headings, **bold**, *italic*, - for lists." position="bottom" />
             </header>
             <div className="nmd-tags-bar">
               {(activePage.tags || []).map(tag => (

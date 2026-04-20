@@ -692,3 +692,70 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 .nmd-palette-item:hover, .nmd-palette-item.sel { background: var(--bg-hover); }
 .nmd-palette-item.danger { color: var(--danger); }
 .nmd-palette-empty { padding: 16px; font-size: 13px; color: var(--fg3); text-align: center; }
+
+/* Contextual tooltips */
+.nmd-tip-trigger {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; padding: 0;
+  background: none; border: none; cursor: pointer;
+  color: var(--fg4); border-radius: 50%;
+  transition: color 120ms var(--ease), background 120ms var(--ease);
+}
+.nmd-tip-trigger:hover { color: var(--fg2); background: var(--bg-hover); }
+.nmd-tip-trigger:focus { outline: none; }
+.nmd-tip-trigger:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 1px; }
+
+.nmd-tooltip {
+  position: fixed; z-index: 9999;
+  width: 220px; padding: 10px 12px;
+  background: var(--fg1); color: var(--bg);
+  font-size: 12px; line-height: 1.5;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: nmd-tooltip-in 150ms var(--ease);
+  pointer-events: none;
+}
+.nmd-tooltip-top { transform: translateY(-100%); }
+.nmd-tooltip-left { transform: translateY(-50%); }
+.nmd-tooltip-right { transform: translateY(-50%); }
+@keyframes nmd-tooltip-in {
+  from { opacity: 0; transform: translateY(-100%) scale(0.95); }
+  to { opacity: 1; transform: translateY(-100%) scale(1); }
+}
+.nmd-tooltip-bottom { animation-name: nmd-tooltip-in-bottom; }
+@keyframes nmd-tooltip-in-bottom {
+  from { opacity: 0; scale: 0.95; }
+  to { opacity: 1; scale: 1; }
+}
+
+/* Empty states */
+.nmd-empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: 32px 20px;
+  max-width: 280px; margin: 0 auto;
+}
+.nmd-empty-icon {
+  color: var(--fg4); opacity: 0.6;
+  margin-bottom: 12px;
+}
+.nmd-empty-title {
+  margin: 0 0 6px; font-size: 14px; font-weight: 600;
+  color: var(--fg2);
+}
+.nmd-empty-desc {
+  margin: 0 0 14px; font-size: 13px; line-height: 1.5;
+  color: var(--fg3);
+}
+.nmd-empty-action {
+  padding: 8px 16px; border-radius: 6px;
+  background: var(--accent-blue); color: #fff;
+  border: none; font-size: 13px; font-weight: 500;
+  cursor: pointer; margin-bottom: 10px;
+  transition: background 120ms var(--ease), transform 80ms var(--ease);
+}
+.nmd-empty-action:hover { background: var(--accent-deep); }
+.nmd-empty-action:active { transform: scale(0.98); }
+.nmd-empty-tip {
+  font-size: 11px; color: var(--fg4);
+  font-style: italic;
+}
