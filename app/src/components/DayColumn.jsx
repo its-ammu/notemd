@@ -18,33 +18,7 @@ function fmtDuration(d) {
   return m ? `${h}h${m}m` : `${h}h`;
 }
 
-const REPEAT_LABELS = { none: null, daily: 'M-F', weekly: 'wk', biweekly: '2wk' };
-
-function MeetingCard({ meeting, onClick }) {
-  return (
-    <div className="nmd-meeting" onClick={onClick}>
-      <div className="nmd-meeting-row">
-        <svg className="nmd-meeting-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 6v6l4 2" />
-        </svg>
-        <span className="nmd-meeting-title">{meeting.title}</span>
-      </div>
-      <div className="nmd-meeting-meta">
-        {meeting.time && <span>{fmtTime(meeting.time)}</span>}
-        {meeting.duration && <span>{fmtDuration(meeting.duration)}</span>}
-        {meeting.repeat && meeting.repeat !== 'none' && (
-          <span className="nmd-meeting-repeat-badge">
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>
-            {REPEAT_LABELS[meeting.repeat]}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onAddMeeting, onEditMeeting }) {
+export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask }) {
   const [adding, setAdding] = useState(false);
   const [addText, setAddText] = useState('');
   const [copied, setCopied] = useState(false);
@@ -63,7 +37,6 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
     const dayLabel = DAY_NAMES[dayNameIndex] + ' ' + date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const lines = [dayLabel];
 
-    // Tasks
     if (tasks.length > 0) {
       lines.push('', 'Tasks:');
       tasks.forEach(t => {
@@ -72,8 +45,7 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
       });
     }
 
-    // Meetings
-    if (meetings.length > 0) {
+    if (meetings && meetings.length > 0) {
       lines.push('', 'Meetings:');
       meetings.forEach(m => {
         const timeStr = m.time ? fmtTime(m.time) : '';
@@ -83,7 +55,7 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
       });
     }
 
-    if (tasks.length === 0 && meetings.length === 0) {
+    if (tasks.length === 0 && (!meetings || meetings.length === 0)) {
       lines.push('(no entries)');
     }
 
@@ -96,10 +68,9 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
   };
 
   const dateNum = date.getDate();
-  const monthLetter = date.toLocaleDateString(undefined, { month: 'short' }).toLowerCase();
-  const dayOfWeek = date.getDay(); // 0 = Sunday
-  const dayNameIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to Mon=0 index
-  const sortedMeetings = [...meetings].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const dayOfWeek = date.getDay();
+  const dayNameIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const meetingCount = meetings ? meetings.length : 0;
 
   return (
     <div
@@ -116,15 +87,21 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
       <div className="nmd-day-header">
         <div className="nmd-day-labels">
           <span className="nmd-day-name">{DAY_NAMES[dayNameIdx]}</span>
-          <span className="nmd-day-num">
-            {dateNum}
-            <span style={{ fontSize: 11, color: 'var(--fg4)', fontWeight: 400, marginLeft: 4, fontFamily: 'var(--font-mono)' }}>{monthLetter}</span>
-          </span>
+          <span className="nmd-day-num">{dateNum}</span>
         </div>
         <div className="nmd-day-actions">
+          {meetingCount > 0 && (
+            <span className="nmd-day-mtg-chip" title={`${meetingCount} meeting${meetingCount !== 1 ? 's' : ''}`}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              {meetingCount}
+            </span>
+          )}
           <button
             className={'nmd-day-btn' + (copied ? ' copied' : '')}
-            title="Copy entries (for timesheet)"
+            title="Copy entries"
             onClick={copyDay}
           >
             {copied ? (
@@ -136,16 +113,12 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
               </svg>
             )}
           </button>
-          <button className="nmd-day-btn" title="New task" onClick={() => setAdding(true)}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
         </div>
       </div>
 
-      {/* Tasks section */}
       <div className="nmd-day-body">
-        {tasks.length === 0 && meetings.length === 0 && !adding && (
-          <div className="nmd-day-empty">Nothing planned.</div>
+        {tasks.length === 0 && !adding && (
+          <div className="nmd-day-empty">—</div>
         )}
         {tasks.map(t => (
           <Task
@@ -175,28 +148,6 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
           <button className="nmd-add-task" onClick={() => setAdding(true)}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 5v14M5 12h14" /></svg>
             Add task
-          </button>
-        )}
-      </div>
-
-      {/* Meetings section */}
-      <div className="nmd-day-meetings">
-        <div className="nmd-meetings-divider">
-          <span className="nmd-meetings-label">Meetings</span>
-          <button className="nmd-day-btn" title="Add meeting" onClick={onAddMeeting} style={{ width: 20, height: 20 }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
-        </div>
-        {sortedMeetings.map(m => (
-          <MeetingCard key={m.id} meeting={m} onClick={() => onEditMeeting(m.id)} />
-        ))}
-        {sortedMeetings.length === 0 && (
-          <button className="nmd-add-meeting-btn" onClick={onAddMeeting}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 6v6l4 2" />
-            </svg>
-            Add meeting
           </button>
         )}
       </div>

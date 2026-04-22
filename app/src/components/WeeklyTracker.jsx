@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DayColumn from './DayColumn';
 import TaskDialog from './TaskDialog';
 import MeetingDialog from './MeetingDialog';
+import MeetingsDrawer from './MeetingsDrawer';
 import { startOfWeek, addDays, fmtDate, fmtRange } from '../utils/time';
 import { expandRecurringMeetings } from '../utils/meetings';
 import { PRIO } from '../utils/constants';
@@ -255,7 +256,6 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               key={key}
               date={d}
               tasks={getTasks(d)}
-              meetings={getMeetings(d)}
               isToday={fmtDate(d) === fmtDate(today)}
               isWeekend={dow === 0 || dow === 6}
               onAddTask={(title) => addTask(key, title)}
@@ -266,12 +266,18 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               draggingId={draggingId}
               showToast={showToast}
               onEditTask={(id) => setEditingTask({ dateKey: key, id })}
-              onAddMeeting={() => addMeeting(key)}
-              onEditMeeting={(id) => setEditingMeeting({ dateKey: key, id })}
+              meetings={getMeetings(d)}
             />
           );
         })}
       </div>
+
+      <MeetingsDrawer
+        days={days}
+        getMeetings={getMeetings}
+        onAddMeeting={(dateKey) => setEditingMeeting({ dateKey, new: true })}
+        onEditMeeting={(dateKey, id) => setEditingMeeting({ dateKey, id })}
+      />
 
       {/* Task edit dialog */}
       {editingTask && (() => {

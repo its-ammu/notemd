@@ -2,6 +2,15 @@
 html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font-sans); color: var(--fg2); }
 * { box-sizing: border-box; }
 
+/* Mobile: allow body to scroll */
+@media (max-width: 720px) {
+  html, body {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
 /* Auth screen */
 .nmd-auth-shell {
   min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;

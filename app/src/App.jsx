@@ -197,6 +197,7 @@ function App() {
           tasksByDate={tasksByDate}
           setTasksByDate={setTasksByDate}
           meetingsByDate={meetingsByDate}
+          setMeetingsByDate={setMeetingsByDate}
           displayName={profile?.display_name || (user.email ? user.email.split('@')[0] : '')}
           onOpenPage={(nbId, pageId) => { setActiveSel({ nbId, pageId }); setTab('notebooks'); }}
           onGoToTab={setTab}

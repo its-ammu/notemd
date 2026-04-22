@@ -10,8 +10,8 @@ export const NB_COLORS = [
 
 export const PRIO = {
   high: { label: 'High',   color: '#CD2C54', cls: 'prio-high' },
-  med:  { label: 'Medium', color: '#C89EF4', cls: 'prio-med'  },
-  low:  { label: 'Low',    color: '#5167F4', cls: 'prio-low'  },
+  med:  { label: 'Medium', color: '#5167F4', cls: 'prio-med'  },
+  low:  { label: 'Low',    color: '#C89EF4', cls: 'prio-low'  },
   none: { label: 'None',   color: '#bbbbbb', cls: 'prio-none' },
 };
 

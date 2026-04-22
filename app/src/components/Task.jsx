@@ -47,36 +47,24 @@ export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging,
         >
           {task.done && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M4 12l5 5L20 6" /></svg>}
         </button>
-        <div className="nmd-task-title">{task.title}</div>
+        <div className="nmd-task-title"><span className="nmd-task-title-text">{task.title}</span></div>
+        {hasSubs && <span className="nmd-task-progress">{doneCount}/{task.subtasks.length}</span>}
       </div>
       {hasSubs && (
-        <>
-          <div className="nmd-subtasks">
-            {task.subtasks.map(s => (
-              <div key={s.id} className={'nmd-subtask' + (s.done ? ' done' : '')}>
-                <button
-                  className={'nmd-check' + (s.done ? ' checked' : '')}
-                  onClick={(e) => updateSubtask(s.id, { done: !s.done }, e)}
-                >
-                  {s.done && <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M4 12l5 5L20 6" /></svg>}
-                </button>
-                <span className="nmd-subtask-text">{s.text}</span>
-              </div>
-            ))}
-          </div>
-          <div className="nmd-task-progress">
-            <div className="nmd-task-progress-fill" style={{ width: (doneCount / task.subtasks.length * 100) + '%' }} />
-          </div>
-        </>
+        <div className="nmd-subtasks">
+          {task.subtasks.map(s => (
+            <div key={s.id} className={'nmd-subtask' + (s.done ? ' done' : '')}>
+              <button
+                className={'nmd-check' + (s.done ? ' checked' : '')}
+                onClick={(e) => updateSubtask(s.id, { done: !s.done }, e)}
+              >
+                {s.done && <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M4 12l5 5L20 6" /></svg>}
+              </button>
+              <span className="nmd-subtask-text">{s.text}</span>
+            </div>
+          ))}
+        </div>
       )}
-      <div className="nmd-task-meta">
-        {task.priority && task.priority !== 'none' && (
-          <>
-            <span className={'nmd-task-prio-dot nmd-' + PRIO[task.priority].cls} />
-            <span style={{ marginLeft: 4 }}>{PRIO[task.priority].label}</span>
-          </>
-        )}
-      </div>
     </div>
   );
 }

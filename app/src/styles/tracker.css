@@ -144,23 +144,24 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
   display: flex; flex-direction: column;
   height: 100vh;
   min-width: 0;
-  background: var(--bg);
+  background: var(--bg-raised);
 }
 
 .nmd-tracker-header {
   display: flex; align-items: center; gap: 16px;
-  padding: 14px 28px;
-  border-bottom: 1px solid var(--border);
+  padding: 18px 28px 14px;
+  border-bottom: none;
 }
 .nmd-tracker-title {
   display: flex; align-items: baseline; gap: 10px;
 }
 .nmd-tracker-title h1 {
-  font-size: 20px; font-weight: 600; color: var(--fg1);
-  letter-spacing: -0.01em; margin: 0;
+  font-size: 22px; font-weight: 600; color: var(--fg1);
+  letter-spacing: -0.02em; margin: 0;
 }
 .nmd-tracker-range {
-  font-family: var(--font-mono); font-size: 12px; color: var(--fg3);
+  font-family: var(--font-sans); font-size: 13px; color: var(--fg3);
+  font-weight: 400;
 }
 .nmd-tracker-nav { display: flex; align-items: center; gap: 2px; }
 .nmd-tracker-spacer { flex: 1; }
@@ -175,138 +176,175 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 }
 .nmd-week-stats .nmd-pill b { color: var(--fg1); font-weight: 600; }
 
-/* Week grid */
+/* Week grid — tweek-inspired: airy, minimal, no heavy dividers */
 .nmd-week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  background: var(--paper-deep);
+  gap: 0;
+  background: var(--bg);
   flex: 1;
   min-height: 0;
-  border-bottom: 1px solid var(--border);
 }
 .nmd-week-grid.day-view {
-  grid-template-columns: minmax(0, 720px) !important;
+  grid-template-columns: minmax(0, 640px) !important;
   justify-content: center;
-  background: var(--paper-deep);
-}
-.nmd-week-grid.day-view .nmd-day {
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
+  background: var(--bg);
 }
 
 .nmd-day {
   display: flex; flex-direction: column;
-  background: var(--paper-raised);
+  background: var(--bg-raised);
   min-width: 0;
   min-height: 0;
+  border-right: 1px solid var(--border);
   transition: background var(--dur-med) var(--ease);
 }
-.nmd-day.today {
-  background: var(--paper-raised);
-}
-.nmd-day.today .nmd-day-num {
-  color: var(--accent-blue);
-}
-.nmd-day.weekend { background: var(--bg); }
+.nmd-week-grid > .nmd-day:last-child { border-right: none; }
+.nmd-week-grid.day-view .nmd-day { border-right: none; }
+.nmd-day.weekend { background: var(--bg-raised); }
 .nmd-day.drop-target { background: rgba(81, 103, 244, 0.04); }
 
 .nmd-day-header {
-  display: flex; align-items: baseline; justify-content: space-between;
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 14px 10px;
   gap: 8px;
+  border-bottom: 2px solid var(--fg2);
+  margin: 0 6px;
 }
-.nmd-day-labels { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nmd-day.today .nmd-day-header {
+  border-bottom-color: var(--accent-blue);
+}
+.nmd-day-labels {
+  display: flex; align-items: baseline; gap: 8px;
+  min-width: 0;
+}
 .nmd-day-name {
-  font-size: 11px; font-weight: 600;
-  color: var(--fg3); text-transform: uppercase;
-  letter-spacing: 0.08em; font-family: var(--font-mono);
+  font-size: 12px; font-weight: 500;
+  color: var(--fg3);
+  letter-spacing: 0;
+  font-family: var(--font-sans);
 }
-.nmd-day.today .nmd-day-name { color: var(--accent-blue); }
+.nmd-day.today .nmd-day-name { color: var(--accent-blue); font-weight: 600; }
 .nmd-day-num {
-  font-size: 18px; font-weight: 600; color: var(--fg1);
-  line-height: 1.2; letter-spacing: -0.01em;
+  font-size: 14px; font-weight: 500; color: var(--fg2);
+  line-height: 1; letter-spacing: -0.01em;
+  font-family: var(--font-sans);
+}
+.nmd-day.today .nmd-day-num {
+  color: var(--accent-blue);
+  font-weight: 600;
 }
 .nmd-day-actions { display: flex; gap: 2px; align-items: center; }
 .nmd-day-btn {
-  width: 24px; height: 24px; border-radius: 4px;
+  width: 22px; height: 22px; border-radius: 4px;
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; cursor: pointer;
   color: var(--fg4);
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-  position: relative;
+  opacity: 0;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }
-.nmd-day-btn:hover { background: var(--bg-hover); color: var(--fg1); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-.nmd-day-btn.copied { color: var(--accent-blue); }
+.nmd-day:hover .nmd-day-btn { opacity: 1; }
+.nmd-day-btn:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-day-btn.copied { color: var(--accent-blue); opacity: 1; }
+
+.nmd-day-mtg-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--fg3);
+  padding: 1px 5px 1px 4px;
+  background: var(--bg-hover);
+  border-radius: 10px;
+}
 
 .nmd-day-body {
   flex: 1; overflow-y: auto;
-  padding: 12px 10px 16px;
+  padding: 4px 10px 16px;
   display: flex; flex-direction: column;
-  gap: 8px;
+  gap: 0;
 }
 .nmd-day-body::-webkit-scrollbar { width: 6px; }
 .nmd-day-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-/* Task card */
+/* Task card — tweek-style: ruled list item with underline */
 .nmd-task {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-left-width: 4px;
-  border-radius: 6px;
-  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-strong);
+  border-radius: 0;
+  padding: 8px 4px 8px 6px;
   cursor: grab;
-  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  transition: background var(--dur-fast) var(--ease);
   user-select: none;
   position: relative;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 .nmd-task:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-  transform: translateY(-1px);
-  border-color: var(--border-strong);
+  background: var(--bg-hover);
 }
 .nmd-task.dragging {
-  opacity: 0.9; cursor: grabbing;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-  transform: scale(1.02);
+  opacity: 0.85; cursor: grabbing;
+  background: var(--bg-press);
   z-index: 10;
 }
 .nmd-task.done .nmd-task-title {
-  color: var(--fg3); text-decoration: line-through;
+  color: var(--fg4); text-decoration: line-through;
   text-decoration-color: var(--fg4);
 }
-.nmd-task.done { opacity: 0.6; box-shadow: none; transform: none; }
+.nmd-task.done { opacity: 0.7; }
 
-.nmd-task.prio-high { border-left-color: var(--accent-rose); }
-.nmd-task.prio-med  { border-left-color: var(--accent-purple); }
-.nmd-task.prio-low  { border-left-color: var(--accent-blue); }
-.nmd-task.prio-none { border-left-color: var(--fg4); }
+/* Priority chip — wraps just the title text, not the full row */
+.nmd-task.prio-high .nmd-task-title-text,
+.nmd-task.prio-med .nmd-task-title-text,
+.nmd-task.prio-low .nmd-task-title-text {
+  display: inline;
+  padding: 2px 8px;
+  border-radius: 10px;
+  line-height: 2;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.nmd-task.prio-high .nmd-task-title-text {
+  background: var(--accent-rose);
+  color: #fff;
+}
+.nmd-task.prio-med .nmd-task-title-text {
+  background: var(--accent-blue);
+  color: #fff;
+}
+.nmd-task.prio-low .nmd-task-title-text {
+  background: var(--accent-purple);
+  color: #fff;
+}
+.nmd-task.done.prio-high .nmd-task-title-text,
+.nmd-task.done.prio-med .nmd-task-title-text,
+.nmd-task.done.prio-low .nmd-task-title-text {
+  background: transparent;
+  color: var(--fg4);
+  padding: 0;
+}
 
 .nmd-task-row {
   display: flex; align-items: flex-start; gap: 10px;
 }
 .nmd-check {
-  width: 16px; height: 16px;
+  width: 15px; height: 15px;
   border: 1.5px solid var(--border-strong);
-  border-radius: 4px;
+  border-radius: 50%;
   background: transparent;
   cursor: pointer; padding: 0;
-  flex-shrink: 0; margin-top: 1px;
+  flex-shrink: 0; margin-top: 2px;
   display: inline-flex; align-items: center; justify-content: center;
   color: transparent;
   transition: all var(--dur-fast) var(--ease);
 }
 .nmd-check:hover { border-color: var(--fg2); background: var(--bg-hover); }
 .nmd-check.checked {
-  background: var(--fg1); border-color: var(--fg1); color: var(--bg);
+  background: var(--fg2); border-color: var(--fg2); color: var(--bg);
 }
 
 .nmd-task-title {
   flex: 1;
-  font-size: 13px; font-weight: 500;
-  color: var(--fg1); line-height: 1.5;
+  font-size: 13px; font-weight: 400;
+  color: var(--fg1); line-height: 1.45;
   word-break: break-word;
 }
 .nmd-task-title[contenteditable="true"] {
@@ -328,8 +366,8 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
   width: 6px; height: 6px; border-radius: 50%; display: inline-block;
 }
 .nmd-prio-high { background: var(--accent-rose); }
-.nmd-prio-med  { background: var(--accent-purple); }
-.nmd-prio-low  { background: var(--accent-blue); }
+.nmd-prio-med  { background: var(--accent-blue); }
+.nmd-prio-low  { background: var(--accent-purple); }
 
 /* Subtasks */
 .nmd-subtasks {
@@ -339,9 +377,11 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 .nmd-subtask {
   display: flex; align-items: flex-start; gap: 8px;
   font-size: 12px; color: var(--fg2);
-  padding: 2px 0;
+  padding: 4px 0;
   line-height: 1.4;
+  border-bottom: 1px dashed var(--border-strong);
 }
+.nmd-subtask:last-child { border-bottom: none; }
 .nmd-subtask .nmd-check {
   width: 13px; height: 13px; border-radius: 3px;
   margin-top: 1px;
@@ -382,52 +422,48 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 }
 .nmd-subtask-add:hover { color: var(--fg2); background: var(--bg-hover); }
 
-/* Task progress bar */
+/* Task progress count */
 .nmd-task-progress {
-  margin-top: 8px; margin-left: 26px;
-  height: 3px; background: var(--border);
-  border-radius: 1.5px; overflow: hidden;
-}
-.nmd-task-progress-fill {
-  height: 100%; background: var(--accent-blue);
-  transition: width var(--dur-med) var(--ease);
+  flex-shrink: 0;
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg4);
+  letter-spacing: 0.02em;
 }
 
-/* Inline add-task */
+/* Inline add-task — ghostly until hover */
 .nmd-add-task {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; margin-top: auto;
-  background: transparent; border: 1px dashed var(--border);
-  border-radius: 6px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; margin: 4px 0 0;
+  background: transparent; border: none;
+  border-radius: 4px;
   cursor: pointer;
-  font-family: inherit; font-size: 12px; font-weight: 500;
+  font-family: inherit; font-size: 12px; font-weight: 400;
   color: var(--fg4);
+  opacity: 0;
   transition: all var(--dur-fast) var(--ease);
+  text-align: left;
 }
-.nmd-day:hover .nmd-add-task { border-color: var(--border-strong); color: var(--fg3); }
-.nmd-add-task:hover { background: var(--bg-raised); color: var(--fg1); border-color: var(--fg3); box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
+.nmd-day:hover .nmd-add-task { opacity: 1; }
+.nmd-add-task:hover { background: var(--bg-hover); color: var(--fg1); }
 .nmd-add-task-input {
   width: 100%;
-  padding: 8px 10px;
-  background: var(--bg); border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  font-family: inherit; font-size: 13px; font-weight: 500;
+  padding: 6px 8px;
+  background: transparent; border: none;
+  border-bottom: 1px solid var(--accent-blue);
+  border-radius: 0;
+  font-family: inherit; font-size: 13px; font-weight: 400;
   color: var(--fg1); outline: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-}
-.nmd-add-task-input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 2px rgba(81, 103, 244, 0.2);
 }
 
 .nmd-day-empty {
-  font-size: 12px; color: var(--fg4);
-  padding: 20px 10px; text-align: center;
-  flex: 1;
-  display: flex; align-items: center; justify-content: center;
-  background: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(0,0,0,0.01) 10px, rgba(0,0,0,0.01) 20px);
-  border-radius: 6px; border: 1px dashed var(--border);
-  margin-top: 4px;
+  font-size: 12px; color: var(--fg5);
+  padding: 8px 4px;
+  text-align: left;
+  background: none;
+  border: none;
+  margin: 0;
 }
 
 /* Toast */
@@ -754,98 +790,131 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 }
 
 /* =========================================================================
-   Meetings
+   Meetings drawer (collapsible bottom panel)
    ========================================================================= */
 
-/* Meetings section within day column */
-.nmd-day-meetings {
+.nmd-mtg-drawer {
   border-top: 1px solid var(--border);
-  padding: 8px 10px 12px;
-  display: flex; flex-direction: column;
-  gap: 6px;
-  min-height: 0;
+  background: var(--bg);
+  flex: 0 0 auto;
+  max-height: 40vh;
+  display: flex;
+  flex-direction: column;
+}
+.nmd-mtg-drawer.open {
+  max-height: 40vh;
+}
+
+.nmd-mtg-drawer-handle {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 28px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px; font-weight: 500;
+  color: var(--fg2);
+  text-align: left;
+  width: 100%;
+  transition: background var(--dur-fast) var(--ease);
+}
+.nmd-mtg-drawer-handle:hover { background: var(--bg-hover); }
+.nmd-mtg-drawer-handle svg { color: var(--fg3); }
+.nmd-mtg-drawer-label { flex: 1; }
+.nmd-mtg-drawer-count {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg3);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+.nmd-mtg-drawer-chev {
+  color: var(--fg4);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.nmd-mtg-drawer-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0;
+  padding: 0 20px 16px;
   overflow-y: auto;
 }
 
-.nmd-meetings-divider {
+.nmd-mtg-drawer-day {
+  padding: 10px 8px;
+  min-width: 0;
+}
+.nmd-mtg-drawer-day-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 2px;
+  font-size: 11px; font-weight: 500;
+  color: var(--fg3);
+  margin-bottom: 6px;
 }
-.nmd-meetings-label {
-  font-size: 10px; font-weight: 600;
-  color: var(--fg3); text-transform: uppercase;
-  letter-spacing: 0.08em; font-family: var(--font-mono);
+.nmd-mtg-drawer-day-name {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
 }
-
-/* Meeting card */
-.nmd-meeting {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent-deep);
-  border-radius: 6px;
-  padding: 8px 10px;
-  cursor: pointer;
-  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-}
-.nmd-meeting:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-  transform: translateY(-1px);
-  border-color: var(--border-strong);
-  border-left-color: var(--accent-deep);
-}
-
-.nmd-meeting-row {
-  display: flex; align-items: flex-start; gap: 8px;
-}
-.nmd-meeting-icon {
-  color: var(--accent-deep);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-.nmd-meeting-title {
-  flex: 1;
-  font-size: 12px; font-weight: 500;
-  color: var(--fg1); line-height: 1.4;
-  word-break: break-word;
-}
-
-.nmd-meeting-meta {
-  display: flex; align-items: center; gap: 4px;
-  margin-top: 3px; margin-left: 20px;
-  font-size: 10px; color: var(--fg3);
-  font-family: var(--font-mono);
-  flex-wrap: wrap;
-}
-
-.nmd-meeting-repeat-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 1px 5px;
-  background: rgba(107, 82, 174, 0.08);
-  border-radius: 3px;
-  color: var(--accent-deep);
-  font-size: 10px;
-}
-
-/* Add meeting button */
-.nmd-add-meeting-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 8px;
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: inherit; font-size: 11px; font-weight: 500;
+.nmd-mtg-drawer-add {
+  width: 20px; height: 20px; border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; cursor: pointer;
   color: var(--fg4);
+  opacity: 0;
   transition: all var(--dur-fast) var(--ease);
 }
-.nmd-add-meeting-btn:hover {
-  background: var(--bg-raised);
-  color: var(--accent-deep);
-  border-color: var(--accent-deep);
+.nmd-mtg-drawer-day:hover .nmd-mtg-drawer-add { opacity: 1; }
+.nmd-mtg-drawer-add:hover { background: var(--bg-hover); color: var(--fg1); }
+
+.nmd-mtg-drawer-empty {
+  font-size: 11px; color: var(--fg5);
+  padding: 4px 0;
 }
-.nmd-add-meeting-btn svg { color: var(--accent-deep); opacity: 0.5; }
-.nmd-add-meeting-btn:hover svg { opacity: 1; }
+
+.nmd-mtg-drawer-list {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column;
+  gap: 0;
+}
+.nmd-mtg-drawer-list > li { border-bottom: 1px solid var(--border-strong); }
+.nmd-mtg-drawer-list > li:last-child { border-bottom: none; }
+.nmd-mtg-drawer-item {
+  display: flex; align-items: baseline; gap: 8px;
+  width: 100%;
+  padding: 7px 6px;
+  background: transparent; border: none;
+  border-radius: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--fg1);
+  transition: background var(--dur-fast) var(--ease);
+}
+.nmd-mtg-drawer-item:hover { background: var(--bg-hover); }
+.nmd-mtg-drawer-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg3);
+  flex: 0 0 auto;
+  min-width: 42px;
+}
+.nmd-mtg-drawer-title {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--fg1);
+  line-height: 1.3;
+  word-break: break-word;
+}
+.nmd-mtg-drawer-dur {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg4);
+  flex: 0 0 auto;
+}
 
 /* Meeting dialog fields */
 .nmd-mtg-field-label {
@@ -1052,6 +1121,119 @@ textarea.nmd-mtg-input {
   letter-spacing: 0.05em; color: var(--fg4); margin-top: 6px;
 }
 
+/* Upcoming meeting countdown banner */
+.nmd-home-countdown {
+  display: flex; align-items: center; gap: 12px;
+  max-width: 1100px; margin: -12px auto 20px;
+  padding: 12px 16px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(81, 103, 244, 0.08), rgba(200, 158, 244, 0.06));
+  border: 1px solid rgba(81, 103, 244, 0.15);
+}
+.nmd-home-countdown-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--accent-blue); color: #fff;
+}
+.nmd-home-countdown-text {
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 14px; color: var(--fg1);
+}
+.nmd-home-countdown-label { color: var(--fg3); font-weight: 400; }
+.nmd-home-countdown-title { font-weight: 600; }
+.nmd-home-countdown-time {
+  font-weight: 700; font-family: var(--font-mono);
+  color: var(--accent-blue); font-size: 15px;
+}
+.nmd-home-countdown-clear {
+  background: linear-gradient(135deg, rgba(122, 138, 95, 0.08), rgba(58, 138, 95, 0.06));
+  border-color: rgba(122, 138, 95, 0.15);
+}
+.nmd-home-countdown-icon.clear {
+  background: #7A8A5F;
+}
+
+/* Mini week calendar */
+.nmd-home-mini-week {
+  display: flex; gap: 4px; margin-bottom: 16px;
+}
+.nmd-home-mini-day {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 8px 4px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--border);
+  cursor: pointer; transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+.nmd-home-mini-day:hover { background: var(--bg-hover); }
+.nmd-home-mini-day.today {
+  background: var(--accent-blue); border-color: var(--accent-blue);
+}
+.nmd-home-mini-day.today .nmd-home-mini-name,
+.nmd-home-mini-day.today .nmd-home-mini-num { color: #fff; }
+.nmd-home-mini-name {
+  font-size: 10px; font-weight: 600; color: var(--fg4);
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.nmd-home-mini-num {
+  font-size: 14px; font-weight: 600; color: var(--fg1);
+  margin-top: 2px;
+}
+.nmd-home-mini-dots {
+  display: flex; gap: 3px; margin-top: 4px; min-height: 6px;
+}
+.nmd-home-mini-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.nmd-home-mini-dot.task { background: var(--accent-blue); }
+.nmd-home-mini-dot.meeting { background: var(--accent-purple, #C89EF4); }
+.nmd-home-mini-day.today .nmd-home-mini-dot { background: rgba(255,255,255,0.7); }
+
+/* Quick add section */
+.nmd-home-quickadd-btns { display: flex; flex-direction: column; gap: 10px; }
+.nmd-home-quickadd-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 8px;
+  background: var(--bg); border: 1px dashed var(--border);
+  color: var(--fg2); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+.nmd-home-quickadd-btn:hover {
+  background: var(--bg-hover); border-color: var(--fg4);
+}
+.nmd-home-quickadd-btn svg { color: var(--fg3); }
+.nmd-home-quickadd-form {
+  display: flex; gap: 8px; align-items: center; flex: 1; min-width: 0;
+}
+.nmd-home-quickadd-form input[type="text"] {
+  flex: 1; min-width: 0; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--fg1);
+  font-size: 13px; outline: none;
+  transition: border-color 120ms var(--ease);
+}
+.nmd-home-quickadd-form input[type="text"]:focus {
+  border-color: var(--accent-blue);
+}
+.nmd-home-quickadd-time {
+  width: 100px; padding: 10px 8px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--fg1);
+  font-size: 13px; outline: none;
+}
+.nmd-home-quickadd-submit {
+  padding: 10px 16px; border-radius: 8px;
+  background: var(--accent-blue); color: #fff;
+  border: none; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background 120ms var(--ease);
+}
+.nmd-home-quickadd-submit:hover { background: var(--accent-deep); }
+.nmd-home-quickadd-cancel {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 8px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--fg3); cursor: pointer;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+.nmd-home-quickadd-cancel:hover { background: var(--bg-hover); color: var(--fg1); }
+
 /* Hidden by default; shown on mobile for the notebooks pane */
 .nmd-mobile-back { display: none; }
 
@@ -1070,10 +1252,14 @@ textarea.nmd-mtg-input {
     min-height: 100dvh;
     padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
+    overflow: visible;
+    overflow-y: auto;
   }
   .nmd-rail {
     position: fixed;
     left: 0; right: 0; bottom: 0;
+    top: auto;
+    height: auto;
     z-index: 60;
     flex-direction: row;
     align-items: center;
@@ -1102,7 +1288,11 @@ textarea.nmd-mtg-input {
     min-height: 0;
     overflow-y: auto;
   }
-  .nmd-main { min-width: 0; }
+  .nmd-main {
+    min-width: 0;
+    height: auto !important;
+    overflow: visible !important;
+  }
 
   /* Editor header: tighter, wrap extras */
   .nmd-header {
@@ -1112,7 +1302,14 @@ textarea.nmd-mtg-input {
   }
   .nmd-header .nmd-saved { display: none; }
   .nmd-header .nmd-paper-picker { display: none; }
-  .nmd-title-input { font-size: 15px; min-width: 120px; }
+  .nmd-title-input {
+    font-size: 15px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .nmd-mobile-back { display: inline-flex; }
 
   /* Editor body */
@@ -1150,11 +1347,30 @@ textarea.nmd-mtg-input {
   }
 
   /* Home pane */
-  .nmd-home { height: auto; min-height: 100%; padding: 20px 16px 40px; }
+  .nmd-home {
+    display: block;
+    height: auto !important;
+    min-height: auto !important;
+    overflow-y: visible !important;
+    overflow-x: hidden;
+    padding: 20px 16px 40px;
+    width: 100%;
+    max-width: 100%;
+  }
   .nmd-home-header { margin-bottom: 18px; }
   .nmd-home-header h1 { font-size: 22px; }
-  .nmd-home-grid { grid-template-columns: 1fr; gap: 12px; }
-  .nmd-home-card { padding: 14px 14px 12px; border-radius: 8px; }
+  .nmd-home-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    max-width: 100%;
+    width: 100%;
+  }
+  .nmd-home-card {
+    padding: 14px 14px 12px;
+    border-radius: 8px;
+    min-width: 0;
+    max-width: 100%;
+  }
   .nmd-home-stat-grid { gap: 14px; }
   .nmd-home-stat-num { font-size: 22px; }
   .nmd-home-task-title,
@@ -1162,7 +1378,12 @@ textarea.nmd-mtg-input {
   .nmd-home-page-title { white-space: normal; }
 
   /* Weekly tracker: days stack vertically, whole page scrolls */
-  .nmd-tracker { height: auto; min-height: 100%; }
+  .nmd-tracker {
+    display: block;
+    height: auto !important;
+    min-height: auto !important;
+    overflow-y: visible !important;
+  }
   .nmd-tracker-header {
     padding: 12px 16px; gap: 10px; flex-wrap: wrap;
   }

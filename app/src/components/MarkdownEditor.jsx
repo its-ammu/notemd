@@ -142,13 +142,15 @@ export default function MarkdownEditor({ value, onChange, placeholder }) {
   const containerRef = useRef(null);
   const viewRef = useRef(null);
   const isExternalUpdate = useRef(false);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const updateListener = EditorView.updateListener.of((update) => {
       if (update.docChanged && !isExternalUpdate.current) {
-        onChange(update.state.doc.toString());
+        onChangeRef.current(update.state.doc.toString());
       }
     });
 
