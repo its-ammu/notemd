@@ -18,7 +18,7 @@ function fmtDuration(d) {
   return m ? `${h}h${m}m` : `${h}h`;
 }
 
-export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask }) {
+export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onStartPomodoro, onDuplicate }) {
   const [adding, setAdding] = useState(false);
   const [addText, setAddText] = useState('');
   const [copied, setCopied] = useState(false);
@@ -129,6 +129,8 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
             onDragEnd={onDragEnd}
             dragging={draggingId === t.id}
             onEdit={onEditTask}
+            onStartPomodoro={onStartPomodoro}
+            onDuplicate={onDuplicate}
           />
         ))}
         {adding ? (

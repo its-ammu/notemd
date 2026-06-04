@@ -57,7 +57,7 @@ function formatCountdown(mins) {
 
 export default function HomePane({
   notebooks, tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate,
-  onOpenPage, onGoToTab, displayName,
+  onOpenPage, onGoToTab, displayName, pomoStats,
 }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayKey = fmtDate(today);
@@ -376,6 +376,20 @@ export default function HomePane({
               <div className="nmd-home-stat-label">Meetings</div>
             </div>
           </div>
+          {pomoStats?.total > 0 && (
+            <div className="nmd-home-pomo-stats">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2c0 0 3.5 3.5 1.5 6.5-.5.8-1.5 1-1.5 1s-1-.2-1.5-1C8.5 5.5 12 2 12 2z"/>
+                <line x1="12" y1="9.5" x2="12" y2="12"/>
+                <rect x="7" y="12" width="10" height="8" rx="1"/>
+              </svg>
+              <span>
+                <b>{pomoStats.total}</b> {pomoStats.total === 1 ? 'session' : 'sessions'} scribbled
+                &nbsp;·&nbsp;
+                <b>{pomoStats.mins >= 60 ? `${(pomoStats.mins / 60).toFixed(1)}h` : `${pomoStats.mins}m`}</b> focused
+              </span>
+            </div>
+          )}
         </section>
       </div>
     </main>

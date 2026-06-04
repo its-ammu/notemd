@@ -5,7 +5,7 @@ import { fmtDate, addDays } from '../utils/time';
 import DatePicker from './DatePicker';
 import PageLinkPicker from './PageLinkPicker';
 
-export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, onClose, notebooks, onNavigateToPage }) {
+export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, onClose, notebooks, onNavigateToPage, pomoStats }) {
   const [pickerPos, setPickerPos] = useState(null);
   const pickerBtnRef = useRef(null);
   const pickerRef = useRef(null);
@@ -50,6 +50,7 @@ export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, 
       document.removeEventListener('keydown', onKey);
     };
   }, [showPicker]);
+
   const updateSubtask = (id, patch) => {
     const subs = task.subtasks.map(s => s.id === id ? { ...s, ...patch } : s);
     const allDone = subs.length > 0 && subs.every(s => s.done);
@@ -140,26 +141,17 @@ export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, 
             </div>
           </div>
         </div>
+
         {onMove && dateKey && (
           <div className="nmd-task-move">
             <span className="nmd-task-move-label">Move</span>
-            <button
-              className="nmd-icon-chip"
-              onClick={() => moveBy(1)}
-              title="Tomorrow"
-              aria-label="Move to tomorrow"
-            >
+            <button className="nmd-icon-chip" onClick={() => moveBy(1)} title="Tomorrow">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14" /><path d="m13 6 6 6-6 6" />
               </svg>
               <span>+1</span>
             </button>
-            <button
-              className="nmd-icon-chip"
-              onClick={() => moveBy(7)}
-              title="Next week"
-              aria-label="Move to next week"
-            >
+            <button className="nmd-icon-chip" onClick={() => moveBy(7)} title="Next week">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 12h14" /><path d="m11 6 6 6-6 6" /><path d="M20 6v12" />
               </svg>
@@ -170,7 +162,6 @@ export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, 
               className={'nmd-icon-chip' + (showPicker ? ' active' : '')}
               onClick={() => showPicker ? closePicker() : openPicker()}
               title="Pick date"
-              aria-label="Pick date"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="5" width="18" height="16" rx="2" />
@@ -179,6 +170,7 @@ export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, 
             </button>
           </div>
         )}
+
         {showPicker && onMove && dateKey && createPortal(
           <div
             ref={pickerRef}
@@ -194,12 +186,28 @@ export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, 
           </div>,
           document.body
         )}
+
+        {(() => {
+          const s = pomoStats?.byTask?.[task.id];
+          return s?.sessions > 0 ? (
+            <div className="nmd-task-pomo-row">
+              <span className="nmd-task-pomo-row-stats">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2c0 0 3.5 3.5 1.5 6.5-.5.8-1.5 1-1.5 1s-1-.2-1.5-1C8.5 5.5 12 2 12 2z"/>
+                  <line x1="12" y1="9.5" x2="12" y2="12"/>
+                  <rect x="7" y="12" width="10" height="8" rx="1"/>
+                </svg>
+                {s.sessions} {s.sessions === 1 ? 'session' : 'sessions'} · {s.mins >= 60 ? `${(s.mins / 60).toFixed(1)}h` : `${s.mins}m`} scribbled
+              </span>
+            </div>
+          ) : null;
+        })()}
+
         <div className="nmd-task-footer">
           <button
             className="nmd-icon-chip danger"
             onClick={() => { onDelete(); onClose(); }}
             title="Delete task"
-            aria-label="Delete task"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />

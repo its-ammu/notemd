@@ -4,6 +4,7 @@ import MarkdownEditor from './MarkdownEditor';
 import { NB_COLORS } from '../utils/constants';
 import { relTime } from '../utils/time';
 import { parseHeadings } from '../utils/markdown';
+import { setPagePublic } from '../lib/sync';
 import EmptyState from './EmptyState';
 import { HelpIcon } from './Tooltip';
 
@@ -45,6 +46,16 @@ function makeLongPressProps(handler, timerRef) {
   };
 }
 
+function fmtDate(iso) {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+}
+
 function makeSnippet(body, q) {
   if (!body || !q) return null;
   const flat = body.replace(/\s+/g, ' ').trim();
@@ -68,7 +79,7 @@ function makeSnippet(body, q) {
   );
 }
 
-export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setActiveSel }) {
+export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setActiveSel, saving, syncError }) {
   const [openIds, setOpenIds] = useState(() => new Set(notebooks.map(n => n.id).slice(0, 3)));
   const [query, setQuery] = useState('');
   const [tagFilters, setTagFilters] = useState([]);
@@ -81,6 +92,11 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   const [mobileTree, setMobileTree] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('nmd_nb_sidebar') === 'collapsed');
   const [tocOpen, setTocOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [shareExpiry, setShareExpiry] = useState('never'); // 'keep' | 'never' | days
+  const [shareHideTags, setShareHideTags] = useState(false);
   const previewRef = useRef(null);
   const longPressRef = useRef(null);
 
@@ -124,6 +140,67 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
       ...nb,
       pages: nb.pages.map(p => p.id === activePage.id ? { ...p, ...patch, updated: Date.now() } : p),
     }));
+  };
+
+  // Patch share fields on a page without bumping `updated` (these columns are
+  // written directly via RPC, not through the normal sync diff).
+  const setPageShareState = (nbId, pageId, patch) => setNotebooks(nbs => nbs.map(nb => nb.id !== nbId ? nb : {
+    ...nb,
+    pages: nb.pages.map(p => p.id === pageId ? { ...p, ...patch } : p),
+  }));
+
+  // Turn an expiry choice into an absolute ISO timestamp (or null).
+  const computeExpiry = (opt) => {
+    if (opt === 'keep') return activePage?.publicExpiresAt || null;
+    if (opt === 'never' || !opt) return null;
+    return new Date(Date.now() + Number(opt) * 86400000).toISOString();
+  };
+
+  const openShare = () => {
+    setShareCopied(false);
+    setShareExpiry(activePage?.publicExpiresAt ? 'keep' : 'never');
+    setShareHideTags(!!activePage?.publicHideTags);
+    setShareOpen(true);
+  };
+
+  // Apply share settings. `next` overrides any of { makePublic, expiry, hideTags }.
+  const applyShare = async (next = {}) => {
+    if (!activePage) return;
+    const makePublic = next.makePublic ?? activePage.isPublic;
+    const expiryOpt = next.expiry ?? shareExpiry;
+    const hideTags = next.hideTags ?? shareHideTags;
+    setShareBusy(true);
+    try {
+      const expiresAt = makePublic ? computeExpiry(expiryOpt) : null;
+      const token = await setPagePublic(activePage.id, makePublic, { expiresAt, hideTags });
+      setPageShareState(activeNb.id, activePage.id, {
+        isPublic: makePublic,
+        publicToken: makePublic ? token : activePage.publicToken,
+        publicExpiresAt: makePublic ? expiresAt : activePage.publicExpiresAt,
+        publicHideTags: hideTags,
+      });
+      // Collapse a concrete expiry choice to "keep" so re-edits don't re-extend it.
+      if (makePublic && expiresAt) setShareExpiry('keep');
+    } catch (err) {
+      alert('Could not update sharing: ' + err.message);
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const shareUrl = activePage?.publicToken
+    ? `${window.location.origin}${window.location.pathname}?p=${activePage.publicToken}`
+    : '';
+
+  const copyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 1600);
+    } catch {
+      // Clipboard blocked (e.g. insecure context) — leave the field for manual copy.
+    }
   };
 
   const createNotebook = () => {
@@ -450,7 +527,12 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                 placeholder="Untitled"
                 onChange={e => updatePage({ title: e.target.value })}
               />
-              <span className="nmd-saved" title="Stored in your browser">Saved locally</span>
+              <span
+                className={'nmd-saved' + (syncError ? ' error' : '')}
+                title={syncError || 'Synced to your account'}
+              >
+                {syncError ? 'Sync error' : saving ? 'Saving…' : 'Saved'}
+              </span>
               <div className="nmd-paper-picker" title="Paper style">
                 {['plain', 'dotted', 'squared'].map(pap => (
                   <button
@@ -465,6 +547,17 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                   </button>
                 ))}
               </div>
+              <button
+                className={'nmd-iconbtn nmd-share-btn' + (activePage.isPublic ? ' shared' : '')}
+                onClick={openShare}
+                aria-label="Share page"
+                title={activePage.isPublic ? 'Shared publicly' : 'Share page'}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                  <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+                </svg>
+              </button>
               <div className="nmd-view-toggle">
                 <button className={view === 'rendered' ? 'active' : ''} onClick={() => setView('rendered')}>Read</button>
                 <button className={view === 'source' ? 'active' : ''} onClick={() => setView('source')}>Edit</button>
@@ -568,6 +661,93 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
           </div>
         )}
       </main>
+
+      {/* Share dialog */}
+      {shareOpen && activePage && (
+        <div className="nmd-modal-backdrop" onClick={() => setShareOpen(false)}>
+          <div className="nmd-modal nmd-share-modal" onClick={e => e.stopPropagation()}>
+            <div className="nmd-modal-header">
+              <h2>Share page</h2>
+              <button className="nmd-iconbtn" onClick={() => setShareOpen(false)} aria-label="Close">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              </button>
+            </div>
+            <div className="nmd-modal-body">
+              <div className="nmd-modal-row">
+                <div className="nmd-modal-row-text">
+                  <div className="nmd-modal-row-title">Public link</div>
+                  <div className="nmd-modal-row-desc">
+                    {activePage.isPublic
+                      ? 'Anyone with the link can read this page (no sign-in needed).'
+                      : 'Turn on to create a read-only link you can share with anyone.'}
+                  </div>
+                </div>
+                <button
+                  className={'nmd-toggle' + (activePage.isPublic ? ' on' : '')}
+                  disabled={shareBusy}
+                  onClick={() => applyShare({ makePublic: !activePage.isPublic })}
+                  aria-pressed={activePage.isPublic}
+                  aria-label="Toggle public sharing"
+                >
+                  <span className="nmd-toggle-knob" />
+                </button>
+              </div>
+              {activePage.isPublic && shareUrl && (
+                <div className="nmd-share-link">
+                  <input readOnly value={shareUrl} onFocus={e => e.target.select()} />
+                  <button className="nmd-btn primary" onClick={copyShareLink}>
+                    {shareCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              )}
+              {activePage.isPublic && (
+                <>
+                  <div className="nmd-modal-row">
+                    <div className="nmd-modal-row-text">
+                      <div className="nmd-modal-row-title">Link expiry</div>
+                      <div className="nmd-modal-row-desc">
+                        {activePage.publicExpiresAt
+                          ? `Stops working ${fmtDate(activePage.publicExpiresAt)}.`
+                          : 'Link works until you turn sharing off.'}
+                      </div>
+                    </div>
+                    <select
+                      className="nmd-modal-input"
+                      value={shareExpiry}
+                      disabled={shareBusy}
+                      onChange={e => { setShareExpiry(e.target.value); applyShare({ expiry: e.target.value }); }}
+                    >
+                      {activePage.publicExpiresAt && <option value="keep">Keep current</option>}
+                      <option value="never">No expiry</option>
+                      <option value="1">1 day</option>
+                      <option value="7">7 days</option>
+                      <option value="30">30 days</option>
+                    </select>
+                  </div>
+                  <div className="nmd-modal-row">
+                    <div className="nmd-modal-row-text">
+                      <div className="nmd-modal-row-title">Hide tags</div>
+                      <div className="nmd-modal-row-desc">Keep this page's tags private from public readers.</div>
+                    </div>
+                    <button
+                      className={'nmd-toggle' + (shareHideTags ? ' on' : '')}
+                      disabled={shareBusy}
+                      onClick={() => { const v = !shareHideTags; setShareHideTags(v); applyShare({ hideTags: v }); }}
+                      aria-pressed={shareHideTags}
+                      aria-label="Toggle hide tags"
+                    >
+                      <span className="nmd-toggle-knob" />
+                    </button>
+                  </div>
+                  <p className="nmd-share-note">
+                    Edits you make sync to the public page automatically. Turn sharing off to revoke access — the same link works again if you re-share.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Context menu */}
       {menuState && (

@@ -8,23 +8,15 @@ import { expandRecurringMeetings } from '../utils/meetings';
 import { PRIO } from '../utils/constants';
 import { HelpIcon } from './Tooltip';
 
-export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage }) {
-  const [weekStart, setWeekStart] = useState(() => {
-    const stored = localStorage.getItem('nmd_week');
-    return stored ? startOfWeek(new Date(stored)) : startOfWeek(new Date());
-  });
+export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage, onStartPomodoro, pomoStats }) {
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [draggingId, setDraggingId] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
-  const [editingMeeting, setEditingMeeting] = useState(null); // { dateKey, id } or { dateKey, new: true }
+  const [editingMeeting, setEditingMeeting] = useState(null);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('nmd_tracker_mode') || 'full');
-  const [dayOffset, setDayOffset] = useState(() => {
-    const raw = parseInt(localStorage.getItem('nmd_day_offset') || '', 10);
-    return Number.isFinite(raw) && raw >= 0 && raw <= 6 ? raw : new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-  });
-
-  useEffect(() => { localStorage.setItem('nmd_week', weekStart.toISOString()); }, [weekStart]);
+  const todayDow = new Date().getDay();
+  const [dayOffset, setDayOffset] = useState(todayDow === 0 ? 6 : todayDow - 1);
   useEffect(() => { localStorage.setItem('nmd_tracker_mode', viewMode); }, [viewMode]);
-  useEffect(() => { localStorage.setItem('nmd_day_offset', String(dayOffset)); }, [dayOffset]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -34,17 +26,17 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     viewMode === 'workweek' ? allDays.slice(0, 5) :
     allDays;
 
-  const getTasks = (d) => tasksByDate[fmtDate(d)] || [];
-
-  // Expand recurring meetings for visible week
   const expandedMeetings = useMemo(
     () => expandRecurringMeetings(meetingsByDate, days),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [meetingsByDate, days.map(d => fmtDate(d)).join(',')]
   );
 
+  const getTasks = (d) => tasksByDate[fmtDate(d)] || [];
   const getMeetings = (d) => expandedMeetings[fmtDate(d)] || [];
 
-  // Task operations
+  // ── Task operations ──────────────────────────────────────────────
+
   const updateTasks = (dateKey, fn) => {
     setTasksByDate(prev => {
       const existing = prev[dateKey] || [];
@@ -70,6 +62,23 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     updateTasks(dateKey, tasks => tasks.filter(t => t.id !== id));
   };
 
+  const duplicateTask = (dateKey, sourceTask) => {
+    const copy = {
+      ...sourceTask,
+      id: crypto.randomUUID(),
+      title: sourceTask.title,
+      done: false,
+      subtasks: (sourceTask.subtasks || []).map(s => ({ ...s, id: crypto.randomUUID(), done: false })),
+      created: Date.now(),
+    };
+    updateTasks(dateKey, tasks => {
+      const idx = tasks.findIndex(t => t.id === sourceTask.id);
+      const next = [...tasks];
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
+  };
+
   const moveTask = (taskId, toDateKey) => {
     let task = null, fromKey = null;
     for (const [k, list] of Object.entries(tasksByDate)) {
@@ -86,7 +95,8 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     });
   };
 
-  // Meeting operations
+  // ── Meeting operations ───────────────────────────────────────────
+
   const addMeeting = (dateKey) => {
     setEditingMeeting({ dateKey, new: true });
   };
@@ -140,7 +150,6 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     setMeetingsByDate(prev => {
       const next = { ...prev };
       const list = next[sourceDate] || [];
-      // If the cutoff is on or before the origin, the whole series goes.
       if (endKey <= sourceDate) {
         const filtered = list.filter(m => m.id !== sourceId);
         if (filtered.length === 0) delete next[sourceDate]; else next[sourceDate] = filtered;
@@ -151,7 +160,8 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     });
   };
 
-  // Stats
+  // ── Stats ────────────────────────────────────────────────────────
+
   const weekTasks = days.flatMap(d => getTasks(d));
   const doneCount = weekTasks.filter(t => t.done).length;
   const totalCount = weekTasks.length;
@@ -163,6 +173,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
   const isDayView = viewMode === 'day';
   const focusedDay = allDays[dayOffset];
   const isCurrent = isDayView ? fmtDate(focusedDay) === fmtDate(today) : isCurrentWeek;
+
   const stepBack = () => {
     if (isDayView) {
       if (dayOffset > 0) setDayOffset(dayOffset - 1);
@@ -190,7 +201,18 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     ? focusedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
     : fmtRange(weekStart);
 
-  // Resolve meeting for editing
+  // ── Resolve task for dialog ──────────────────────────────────────
+
+  const taskDialogData = useMemo(() => {
+    if (!editingTask) return null;
+    const list = tasksByDate[editingTask.dateKey] || [];
+    const found = list.find(x => x.id === editingTask.id);
+    if (!found) return null;
+    return { task: found, dateKey: editingTask.dateKey };
+  }, [editingTask, tasksByDate]);
+
+  // ── Resolve meeting for dialog ───────────────────────────────────
+
   const meetingDialogData = useMemo(() => {
     if (!editingMeeting) return null;
     if (editingMeeting.new) {
@@ -243,12 +265,12 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           )}
           {byPrio.high > 0 && <span className="nmd-pill" title="Open high-priority"><span className="nmd-task-prio-dot nmd-prio-high" style={{ marginRight: 5 }} /><b>{byPrio.high}</b> high</span>}
           {byPrio.med > 0 && <span className="nmd-pill"><span className="nmd-task-prio-dot nmd-prio-med" style={{ marginRight: 5 }} /><b>{byPrio.med}</b> med</span>}
-          <HelpIcon tip="Drag tasks between days. Click tasks to edit priority, add subtasks, or link to pages. Meetings can repeat daily, weekly, or biweekly." position="bottom" />
+          <HelpIcon tip="Drag tasks between days. Click tasks to edit priority, add subtasks, or link to pages. Meetings can repeat daily, weekly, or biweekly. Click the candle icon on any task to start a Pomodoro timer." position="bottom" />
         </div>
       </header>
 
       <div className={'nmd-week-grid' + (isDayView ? ' day-view' : '')} style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
-        {days.map((d, i) => {
+        {days.map((d) => {
           const key = fmtDate(d);
           const dow = d.getDay();
           return (
@@ -267,6 +289,8 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               showToast={showToast}
               onEditTask={(id) => setEditingTask({ dateKey: key, id })}
               meetings={getMeetings(d)}
+              onStartPomodoro={onStartPomodoro}
+              onDuplicate={(task) => duplicateTask(key, task)}
             />
           );
         })}
@@ -279,26 +303,22 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
         onEditMeeting={(dateKey, id) => setEditingMeeting({ dateKey, id })}
       />
 
-      {/* Task edit dialog */}
-      {editingTask && (() => {
-        const tList = tasksByDate[editingTask.dateKey] || [];
-        const task = tList.find(x => x.id === editingTask.id);
-        if (!task) return null;
-        return (
-          <TaskDialog
-            task={task}
-            dateKey={editingTask.dateKey}
-            onUpdate={(p) => updateTask(editingTask.dateKey, task.id, p)}
-            onDelete={() => { deleteTask(editingTask.dateKey, task.id); setEditingTask(null); }}
-            onMove={(toKey) => { moveTask(task.id, toKey); setEditingTask(null); }}
-            onClose={() => setEditingTask(null)}
-            notebooks={notebooks}
-            onNavigateToPage={onNavigateToPage}
-          />
-        );
-      })()}
+      {/* Task dialog */}
+      {taskDialogData && (
+        <TaskDialog
+          task={taskDialogData.task}
+          dateKey={taskDialogData.dateKey}
+          onUpdate={(p) => updateTask(taskDialogData.dateKey, taskDialogData.task.id, p)}
+          onDelete={() => { deleteTask(taskDialogData.dateKey, taskDialogData.task.id); setEditingTask(null); }}
+          onMove={(toKey) => { moveTask(taskDialogData.task.id, toKey); setEditingTask(null); }}
+          onClose={() => setEditingTask(null)}
+          notebooks={notebooks}
+          onNavigateToPage={onNavigateToPage}
+          pomoStats={pomoStats}
+        />
+      )}
 
-      {/* Meeting edit dialog */}
+      {/* Meeting dialog */}
       {meetingDialogData && (
         <MeetingDialog
           meeting={meetingDialogData.meeting}
@@ -312,7 +332,6 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
             } else {
               const m = meetingDialogData.meeting;
               if (m._recurring) {
-                // Update the source meeting
                 updateRecurringSource(m.sourceDate, m.sourceId, patch);
               } else {
                 saveMeeting(meetingDialogData.dateKey, m.id, patch);
@@ -332,7 +351,6 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
             if (m._recurring) {
               skipMeetingOccurrence(m.sourceDate, m.sourceId, meetingDialogData.dateKey);
             } else {
-              // Source itself: skip this date and keep the series going
               skipMeetingOccurrence(meetingDialogData.dateKey, m.id, meetingDialogData.dateKey);
             }
           }}
@@ -347,6 +365,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           onClose={() => setEditingMeeting(null)}
         />
       )}
+
     </div>
   );
 }

@@ -1,8 +1,16 @@
 import { supabase } from './supabase';
+import { ensureKey } from './encKey';
+import {
+  encryptText, decryptText,
+  encryptTags, decryptTags,
+  encryptJson, decryptJson,
+} from './crypto';
 
 // ---------- Hydrate: server rows -> client state shape ----------
 
 export async function fetchAllData() {
+  const key = await ensureKey();
+
   const [nbsRes, pgsRes, tsRes, msRes] = await Promise.all([
     supabase.from('notebooks').select('*').order('position', { ascending: true }),
     supabase.from('pages').select('*').order('position', { ascending: true }),
@@ -13,54 +21,75 @@ export async function fetchAllData() {
   const err = nbsRes.error || pgsRes.error || tsRes.error || msRes.error;
   if (err) throw err;
 
+  // Decrypt content fields on the way in. decryptText/Tags/Json pass plaintext
+  // through untouched, so pre-encryption rows and public (plaintext) pages just
+  // work without any per-row flag. Decrypt into ordered arrays first (Promise.all
+  // preserves input order), then group — grouping inside the async map could
+  // scramble position order.
+  const pageRows = await Promise.all((pgsRes.data || []).map(async p => ({
+    notebookId: p.notebook_id,
+    id: p.id,
+    title: await decryptText(key, p.title || ''),
+    body: await decryptText(key, p.body || ''),
+    tags: await decryptTags(key, p.tags),
+    created: new Date(p.created_at).getTime(),
+    updated: new Date(p.updated_at).getTime(),
+    // Sharing state — read-only here; toggled via setPagePublic. Public pages
+    // are stored plaintext (see flattenPages) so get_public_page can serve them.
+    isPublic: !!p.is_public,
+    publicToken: p.public_token || null,
+    publicExpiresAt: p.public_expires_at || null,
+    publicHideTags: !!p.public_hide_tags,
+  })));
+
   const pagesByNb = new Map();
-  (pgsRes.data || []).forEach(p => {
-    const list = pagesByNb.get(p.notebook_id) || [];
-    list.push({
-      id: p.id,
-      title: p.title || '',
-      body: p.body || '',
-      tags: Array.isArray(p.tags) ? p.tags : [],
-      created: new Date(p.created_at).getTime(),
-      updated: new Date(p.updated_at).getTime(),
-    });
-    pagesByNb.set(p.notebook_id, list);
+  pageRows.forEach(p => {
+    const { notebookId, ...page } = p;
+    const list = pagesByNb.get(notebookId) || [];
+    list.push(page);
+    pagesByNb.set(notebookId, list);
   });
 
-  const notebooks = (nbsRes.data || []).map(nb => ({
+  const notebooks = await Promise.all((nbsRes.data || []).map(async nb => ({
     id: nb.id,
-    name: nb.name,
+    name: await decryptText(key, nb.name),
     color: nb.color,
     paper: nb.paper,
     pages: pagesByNb.get(nb.id) || [],
-  }));
+  })));
+
+  const taskRows = await Promise.all((tsRes.data || []).map(async t => ({
+    day: t.day,
+    id: t.id,
+    title: await decryptText(key, t.title || ''),
+    done: !!t.done,
+    priority: t.priority,
+    subtasks: await decryptJson(key, t.subtasks),
+    linkedPageId: t.linked_page_id || null,
+    created: new Date(t.created_at).getTime(),
+  })));
 
   const tasksByDate = {};
-  (tsRes.data || []).forEach(t => {
-    const list = tasksByDate[t.day] || (tasksByDate[t.day] = []);
-    list.push({
-      id: t.id,
-      title: t.title || '',
-      done: !!t.done,
-      priority: t.priority,
-      subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
-      linkedPageId: t.linked_page_id || null,
-      created: new Date(t.created_at).getTime(),
-    });
+  taskRows.forEach(t => {
+    const { day, ...task } = t;
+    (tasksByDate[day] || (tasksByDate[day] = [])).push(task);
   });
 
+  const meetingRows = await Promise.all((msRes.data || []).map(async m => ({
+    day: m.day,
+    id: m.id,
+    title: await decryptText(key, m.title || ''),
+    time: m.time || '',
+    duration: String(m.duration ?? 30),
+    repeat: m.repeat,
+    notes: await decryptText(key, m.notes || ''),
+    linkedPageId: m.linked_page_id || null,
+  })));
+
   const meetingsByDate = {};
-  (msRes.data || []).forEach(m => {
-    const list = meetingsByDate[m.day] || (meetingsByDate[m.day] = []);
-    list.push({
-      id: m.id,
-      title: m.title || '',
-      time: m.time || '',
-      duration: String(m.duration ?? 30),
-      repeat: m.repeat,
-      notes: m.notes || '',
-      linkedPageId: m.linked_page_id || null,
-    });
+  meetingRows.forEach(m => {
+    const { day, ...meeting } = m;
+    (meetingsByDate[day] || (meetingsByDate[day] = [])).push(meeting);
   });
 
   return { notebooks, tasksByDate, meetingsByDate };
@@ -68,73 +97,77 @@ export async function fetchAllData() {
 
 // ---------- Flatten client state -> rows ----------
 
-function flattenNotebooks(notebooks, userId) {
-  return notebooks.map((nb, i) => ({
+async function flattenNotebooks(key, notebooks, userId) {
+  return Promise.all(notebooks.map(async (nb, i) => ({
     id: nb.id,
     user_id: userId,
-    name: nb.name,
+    name: await encryptText(key, nb.name),
     color: nb.color,
     paper: nb.paper,
     position: i,
-  }));
+  })));
 }
 
-function flattenPages(notebooks, userId) {
+async function flattenPages(key, notebooks, userId) {
   const rows = [];
   notebooks.forEach(nb => {
     (nb.pages || []).forEach((p, i) => {
-      rows.push({
+      // Public pages are stored plaintext so get_public_page can serve them to
+      // anonymous visitors. Toggling sharing changes p.isPublic, which re-flows
+      // through here on the next push and rewrites the content accordingly.
+      const plain = !!p.isPublic;
+      rows.push((async () => ({
         id: p.id,
         user_id: userId,
         notebook_id: nb.id,
-        title: p.title || '',
-        body: p.body || '',
-        tags: Array.isArray(p.tags) ? p.tags : [],
+        title: plain ? (p.title || '') : await encryptText(key, p.title || ''),
+        body: plain ? (p.body || '') : await encryptText(key, p.body || ''),
+        tags: await encryptTags(key, p.tags, plain),
         position: i,
-      });
+      }))());
     });
   });
-  return rows;
+  return Promise.all(rows);
 }
 
-function flattenTasks(tasksByDate, userId) {
+async function flattenTasks(key, tasksByDate, userId) {
   const rows = [];
   Object.entries(tasksByDate).forEach(([day, list]) => {
     list.forEach((t, i) => {
-      rows.push({
+      rows.push((async () => ({
         id: t.id,
         user_id: userId,
         day,
-        title: t.title || '',
+        title: await encryptText(key, t.title || ''),
         done: !!t.done,
         priority: t.priority || 'none',
         position: i,
-        subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+        subtasks: await encryptJson(key, t.subtasks),
         linked_page_id: t.linkedPageId || null,
-      });
+      }))());
     });
   });
-  return rows;
+  return Promise.all(rows);
 }
 
-function flattenMeetings(meetingsByDate, userId) {
+async function flattenMeetings(key, meetingsByDate, userId) {
   const rows = [];
   Object.entries(meetingsByDate).forEach(([day, list]) => {
     list.forEach(m => {
-      rows.push({
+      rows.push((async () => ({
         id: m.id,
         user_id: userId,
         day,
-        title: m.title || '',
+        title: await encryptText(key, m.title || ''),
         time: m.time || null,
         duration: parseInt(m.duration, 10) || 30,
         repeat: m.repeat || 'none',
-        notes: m.notes || '',
+        notes: await encryptText(key, m.notes || ''),
         linked_page_id: m.linkedPageId || null,
-      });
+      }))());
     });
   });
-  return rows;
+  return Promise.all(rows);
 }
 
 // ---------- Diff & push ----------
@@ -180,15 +213,83 @@ async function pushTable(table, { upsert, remove }) {
   }
 }
 
+export async function fetchPomoSessions() {
+  const { data, error } = await supabase
+    .from('pomo_sessions')
+    .select('task_id, duration_mins')
+    .eq('session_type', 'work');
+  if (error) throw error;
+  const stats = { total: 0, mins: 0, byTask: {} };
+  for (const row of data || []) {
+    stats.total += 1;
+    stats.mins += row.duration_mins;
+    if (row.task_id) {
+      const t = stats.byTask[row.task_id] || { sessions: 0, mins: 0 };
+      t.sessions += 1;
+      t.mins += row.duration_mins;
+      stats.byTask[row.task_id] = t;
+    }
+  }
+  return stats;
+}
+
+export async function insertPomoSession(userId, taskId, taskTitle, durationMins = 25) {
+  const { error } = await supabase.from('pomo_sessions').insert({
+    user_id: userId,
+    task_id: taskId || null,
+    task_title: taskTitle || null,
+    duration_mins: durationMins,
+    session_type: 'work',
+  });
+  if (error) throw error;
+}
+
+// ---------- Public sharing ----------
+
+// Toggle a page's public visibility. When sharing, returns the share token
+// (minted server-side and stable across re-shares); when unsharing, returns null.
+// opts: { expiresAt: ISO string | null, hideTags: boolean }
+export async function setPagePublic(pageId, isPublic, opts = {}) {
+  const { data, error } = await supabase.rpc('set_page_public', {
+    p_page_id: pageId,
+    p_public: isPublic,
+    p_expires_at: isPublic ? (opts.expiresAt || null) : null,
+    p_hide_tags: !!opts.hideTags,
+  });
+  if (error) throw error;
+  return data; // token string or null
+}
+
+// Fetch a publicly-shared page by its token. Works for anonymous visitors.
+// Returns null when the token is unknown or the page is no longer public.
+export async function getPublicPage(token) {
+  const { data, error } = await supabase.rpc('get_public_page', { p_token: token });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return {
+    title: row.title || '',
+    body: row.body || '',
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    updated: row.updated_at ? new Date(row.updated_at).getTime() : null,
+    notebookName: row.notebook_name || '',
+    notebookColor: row.notebook_color || null,
+  };
+}
+
 export async function pushChanges(userId, prev, next) {
-  const prevNbs = flattenNotebooks(prev.notebooks, userId);
-  const nextNbs = flattenNotebooks(next.notebooks, userId);
-  const prevPgs = flattenPages(prev.notebooks, userId);
-  const nextPgs = flattenPages(next.notebooks, userId);
-  const prevTs  = flattenTasks(prev.tasksByDate, userId);
-  const nextTs  = flattenTasks(next.tasksByDate, userId);
-  const prevMs  = flattenMeetings(prev.meetingsByDate, userId);
-  const nextMs  = flattenMeetings(next.meetingsByDate, userId);
+  const key = await ensureKey();
+  const [prevNbs, nextNbs, prevPgs, nextPgs, prevTs, nextTs, prevMs, nextMs] =
+    await Promise.all([
+      flattenNotebooks(key, prev.notebooks, userId),
+      flattenNotebooks(key, next.notebooks, userId),
+      flattenPages(key, prev.notebooks, userId),
+      flattenPages(key, next.notebooks, userId),
+      flattenTasks(key, prev.tasksByDate, userId),
+      flattenTasks(key, next.tasksByDate, userId),
+      flattenMeetings(key, prev.meetingsByDate, userId),
+      flattenMeetings(key, next.meetingsByDate, userId),
+    ]);
 
   const nbsDiff = diff(prevNbs, nextNbs);
   const pgsDiff = diff(prevPgs, nextPgs);

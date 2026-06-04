@@ -460,6 +460,7 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 }
 .nmd-title-input::placeholder { color: var(--fg4); font-weight: 500; }
 .nmd-saved { font-size: 12px; color: var(--fg3); font-family: var(--font-mono); }
+.nmd-saved.error { color: var(--danger); }
 
 /* Tags bar */
 .nmd-tags-bar {
@@ -768,3 +769,131 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
   font-size: 11px; color: var(--fg4);
   font-style: italic;
 }
+
+/* ── Page sharing ──────────────────────────────────────────────── */
+.nmd-share-btn.shared {
+  color: var(--accent-blue);
+  background: var(--bg-selected);
+}
+
+/* iOS-style toggle reused in the share dialog */
+.nmd-toggle {
+  width: 40px; height: 24px; flex: none;
+  border: none; border-radius: 999px;
+  background: var(--border-strong);
+  position: relative; cursor: pointer;
+  transition: background .18s ease;
+  padding: 0;
+}
+.nmd-toggle.on { background: var(--accent-blue); }
+.nmd-toggle:disabled { opacity: .55; cursor: default; }
+.nmd-toggle-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: var(--shadow-float);
+  transition: transform .18s ease;
+}
+.nmd-toggle.on .nmd-toggle-knob { transform: translateX(16px); }
+
+.nmd-share-modal .nmd-modal-body { gap: 12px; }
+.nmd-share-link {
+  display: flex; gap: 8px; align-items: center;
+}
+.nmd-share-link input {
+  flex: 1; min-width: 0;
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--fg2); background: var(--bg-raised);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.nmd-share-link input:focus { outline: none; border-color: var(--accent-blue); }
+.nmd-share-note {
+  font-size: 12px; color: var(--fg4); line-height: 1.5; margin: 0;
+}
+
+/* ── Standalone public page view ───────────────────────────────── */
+.nmd-public-shell {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 20px 80px;
+}
+.nmd-public-bar {
+  position: sticky; top: 0; z-index: 5;
+  width: 100%; max-width: 760px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; margin-bottom: 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.nmd-public-brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-sans); font-weight: 600; font-size: 14px;
+  color: var(--fg1); text-decoration: none; letter-spacing: -0.01em;
+}
+.nmd-public-logo {
+  position: relative;
+  display: grid; place-items: center;
+  width: 24px; height: 24px;
+  font-family: var(--font-sans); font-weight: 700; font-size: 17px;
+  color: var(--fg1); letter-spacing: -0.02em; line-height: 1;
+}
+.nmd-public-logo::after {
+  content: ""; position: absolute; left: 3px; right: 3px; bottom: 1px;
+  height: 2px; border-radius: 1px; background: var(--accent-blue);
+}
+.nmd-public-bar-actions { display: flex; gap: 4px; }
+.nmd-public-iconbtn {
+  display: grid; place-items: center;
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-raised);
+  color: var(--fg2); cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.nmd-public-iconbtn:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-public-signin {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  padding: 0 14px; height: 32px;
+  font-size: 13px; font-weight: 500; color: var(--fg1);
+  text-decoration: none; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong); background: var(--bg-raised);
+  transition: background .15s ease, border-color .15s ease;
+}
+.nmd-public-signin:hover { background: var(--bg-hover); border-color: var(--fg3); }
+.nmd-public-avatar {
+  display: grid; place-items: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent-blue); color: #fff;
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.02em; text-decoration: none;
+  transition: filter .15s ease;
+}
+.nmd-public-avatar:hover { filter: brightness(1.08); }
+.nmd-public-page { width: 100%; max-width: 760px; }
+.nmd-public-msg {
+  margin: 16vh auto 0; max-width: 420px; text-align: center;
+  color: var(--fg3); display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.nmd-public-msg h1 { font-family: var(--font-sans); font-size: 20px; color: var(--fg1); margin: 0; }
+.nmd-public-msg p { font-size: 14px; line-height: 1.6; margin: 0; }
+.nmd-public-head { margin-bottom: 24px; }
+.nmd-public-nb {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--fg3); font-weight: 500;
+}
+.nmd-public-title {
+  font-family: var(--font-sans); font-weight: 650;
+  font-size: 30px; line-height: 1.15; letter-spacing: -0.02em;
+  color: var(--fg1); margin: 8px 0 10px;
+}
+.nmd-public-meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--fg4); font-family: var(--font-mono);
+}
+.nmd-public-tags { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.nmd-public-foot {
+  margin-top: 56px; padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--fg4); text-align: center;
+}
+.nmd-public-foot a { color: var(--accent-blue); text-decoration: none; }

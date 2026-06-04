@@ -3,12 +3,14 @@ import NotebooksPane from './components/NotebooksPane';
 import WeeklyTracker from './components/WeeklyTracker';
 import HomePane from './components/HomePane';
 import AuthScreen from './components/AuthScreen';
+import PomodoroTimer from './components/PomodoroTimer';
 import { useStoredState } from './hooks/useStoredState';
 import { useAuth } from './hooks/useAuth';
 import { useCloudData } from './hooks/useCloudData';
 import { useProfile } from './hooks/useProfile';
 import { TWEAK_DEFAULTS } from './utils/constants';
 import { isSupabaseConfigured } from './lib/supabase';
+import { fetchPomoSessions, insertPomoSession } from './lib/sync';
 
 function RailBtn({ label, children, active, onClick }) {
   return (
@@ -29,7 +31,7 @@ function App() {
     notebooks, setNotebooks,
     tasksByDate, setTasksByDate,
     meetingsByDate, setMeetingsByDate,
-    loaded, error: syncError,
+    loaded, error: syncError, saving,
   } = useCloudData(user?.id || null);
   const { profile, updateProfile } = useProfile(user?.id || null, user?.email);
 
@@ -43,6 +45,30 @@ function App() {
   const [howToTab, setHowToTab] = useState('overview');
   const [toast, setToast] = useState(null);
   const [theme, setTheme] = useStoredState('nmd_theme', 'light');
+  const [pomodoroConfig, setPomodoroConfig] = useState(null); // { task, workSecs }
+  const [pomoStats, setPomoStats] = useState({ total: 0, mins: 0, byTask: {} });
+
+  // Load pomo sessions from DB when user signs in
+  useEffect(() => {
+    if (!user) { setPomoStats({ total: 0, mins: 0, byTask: {} }); return; }
+    fetchPomoSessions().then(setPomoStats).catch(console.error);
+  }, [user?.id]);
+
+  const startPomodoro = (task, workSecs = 25 * 60, breakSecs = 5 * 60) => setPomodoroConfig({ task, workSecs, breakSecs });
+
+  const handleSessionComplete = (taskId, taskTitle, durationMins = 25) => {
+    if (user) {
+      insertPomoSession(user.id, taskId, taskTitle, durationMins).catch(console.error);
+    }
+    setPomoStats(prev => {
+      const t = prev.byTask?.[taskId] || { sessions: 0, mins: 0 };
+      return {
+        total: prev.total + 1,
+        mins: prev.mins + durationMins,
+        byTask: { ...prev.byTask, [taskId]: { sessions: t.sessions + 1, mins: t.mins + durationMins } },
+      };
+    });
+  };
 
   // Apply theme to document
   useEffect(() => {
@@ -201,6 +227,7 @@ function App() {
           displayName={profile?.display_name || (user.email ? user.email.split('@')[0] : '')}
           onOpenPage={(nbId, pageId) => { setActiveSel({ nbId, pageId }); setTab('notebooks'); }}
           onGoToTab={setTab}
+          pomoStats={pomoStats}
         />
       )}
       {tab === 'notebooks' && (
@@ -209,6 +236,8 @@ function App() {
           setNotebooks={setNotebooks}
           activeSel={activeSel}
           setActiveSel={setActiveSel}
+          saving={saving}
+          syncError={syncError}
         />
       )}
       {tab === 'tracker' && (
@@ -220,6 +249,19 @@ function App() {
           showToast={showToast}
           notebooks={notebooks}
           onNavigateToPage={(nbId, pageId) => { setActiveSel({ nbId, pageId }); setTab('notebooks'); }}
+          onStartPomodoro={startPomodoro}
+          pomoStats={pomoStats}
+        />
+      )}
+
+      {pomodoroConfig && (
+        <PomodoroTimer
+          task={pomodoroConfig.task}
+          workSecs={pomodoroConfig.workSecs}
+          breakSecs={pomodoroConfig.breakSecs}
+          onClose={() => setPomodoroConfig(null)}
+          onSessionComplete={handleSessionComplete}
+          onToast={showToast}
         />
       )}
 

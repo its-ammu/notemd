@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PRIO } from '../utils/constants';
+import TaskContextMenu from './TaskContextMenu';
 
-export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging, onEdit }) {
+export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging, onEdit, onStartPomodoro, onDuplicate }) {
   const doneCount = task.subtasks.filter(s => s.done).length;
   const hasSubs = task.subtasks.length > 0;
-
   const toggleDone = (e) => {
     e.stopPropagation();
     if (hasSubs && !task.done) {
@@ -23,6 +23,7 @@ export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging,
     onUpdate({ subtasks: subs, done: allDone });
   };
 
+  const [menuPos, setMenuPos] = useState(null);
   const cls = 'nmd-task ' + PRIO[task.priority || 'none'].cls + (task.done ? ' done' : '') + (dragging ? ' dragging' : '');
 
   return (
@@ -36,6 +37,7 @@ export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging,
       }}
       onDragEnd={onDragEnd}
       onClick={() => onEdit(task.id)}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMenuPos({ x: e.clientX, y: e.clientY }); }}
       style={{ cursor: 'pointer' }}
     >
       <div className="nmd-task-row">
@@ -47,7 +49,9 @@ export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging,
         >
           {task.done && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M4 12l5 5L20 6" /></svg>}
         </button>
-        <div className="nmd-task-title"><span className="nmd-task-title-text">{task.title}</span></div>
+        <div className="nmd-task-title">
+          <span className="nmd-task-title-text">{task.title}</span>
+        </div>
         {hasSubs && <span className="nmd-task-progress">{doneCount}/{task.subtasks.length}</span>}
       </div>
       {hasSubs && (
@@ -64,6 +68,15 @@ export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging,
             </div>
           ))}
         </div>
+      )}
+      {menuPos && (
+        <TaskContextMenu
+          x={menuPos.x}
+          y={menuPos.y}
+          onStartPomodoro={(workSecs, breakSecs) => onStartPomodoro?.(task, workSecs, breakSecs)}
+          onDuplicate={() => onDuplicate?.(task)}
+          onClose={() => setMenuPos(null)}
+        />
       )}
     </div>
   );
