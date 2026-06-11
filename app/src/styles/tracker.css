@@ -13,10 +13,12 @@
 .nmd-app-shell.tracker-layout {
   grid-template-columns: 52px 1fr;
 }
-body.nmd-nb-collapsed .nmd-app-shell:not(.tracker-layout) {
-  grid-template-columns: 52px 1fr;
+/* Focus mode: just the page — no rail, no sidebar */
+body.nmd-focus .nmd-app-shell:not(.tracker-layout) {
+  grid-template-columns: 1fr;
 }
-body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
+body.nmd-focus .nmd-rail,
+body.nmd-focus .nmd-sidebar { display: none; }
 
 /* Left icon rail */
 .nmd-rail {
@@ -98,7 +100,7 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 }
 .nmd-nb-swatches button {
   width: 14px; height: 14px; border-radius: 50%;
-  border: 1px solid rgba(34,34,34,0.15);
+  border: 1px solid var(--ink-alpha-12);
   cursor: pointer; padding: 0;
   transition: transform var(--dur-fast) var(--ease);
 }
@@ -111,15 +113,16 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
   min-width: 180px;
   background: var(--paper-raised);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-float);
   padding: 4px;
   z-index: 200;
   font-size: 13px;
+  animation: pomo-appear 120ms var(--ease);
 }
 .nmd-menu button {
   display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 6px 10px; border-radius: 4px;
+  padding: 6px 10px; border-radius: var(--radius-sm);
   background: transparent; border: none;
   font-family: inherit; font-size: 13px; color: var(--fg1);
   text-align: left; cursor: pointer;
@@ -135,16 +138,16 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 .nmd-menu-swatches { display: flex; gap: 6px; padding: 4px 10px 6px; }
 .nmd-menu-swatches button {
   width: 16px; height: 16px; border-radius: 50%;
-  padding: 0; border: 1px solid rgba(34,34,34,0.12);
+  padding: 0; border: 1px solid var(--ink-alpha-12);
 }
 .nmd-menu-swatches button.sel { box-shadow: 0 0 0 2px var(--paper-raised), 0 0 0 3px var(--fg1); }
 
-/* Weekly tracker */
+/* Weekly tracker — header floats on the canvas, the week grid is a sheet */
 .nmd-tracker {
   display: flex; flex-direction: column;
   height: 100vh;
   min-width: 0;
-  background: var(--bg-raised);
+  background: var(--bg);
 }
 
 .nmd-tracker-header {
@@ -176,19 +179,24 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 }
 .nmd-week-stats .nmd-pill b { color: var(--fg1); font-weight: 600; }
 
-/* Week grid — tweek-inspired: airy, minimal, no heavy dividers */
+/* Week grid — a white sheet floating on the canvas, days divided by hairlines */
 .nmd-week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0;
-  background: var(--bg);
+  background: var(--bg-raised);
   flex: 1;
   min-height: 0;
+  margin: 0 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
 }
 .nmd-week-grid.day-view {
-  grid-template-columns: minmax(0, 640px) !important;
-  justify-content: center;
-  background: var(--bg);
+  grid-template-columns: minmax(0, 1fr) !important;
+  width: min(680px, calc(100% - 32px));
+  margin-left: auto; margin-right: auto;
 }
 
 .nmd-day {
@@ -202,7 +210,7 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 .nmd-week-grid > .nmd-day:last-child { border-right: none; }
 .nmd-week-grid.day-view .nmd-day { border-right: none; }
 .nmd-day.weekend { background: var(--bg-raised); }
-.nmd-day.drop-target { background: rgba(81, 103, 244, 0.04); }
+.nmd-day.drop-target { background: var(--accent-tint); }
 
 .nmd-day-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -436,9 +444,9 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 .nmd-ctx-menu {
   position: fixed; z-index: 3000;
   background: var(--paper-raised);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.07);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
   padding: 4px;
   min-width: 172px;
   animation: pomo-appear 120ms var(--ease);
@@ -506,9 +514,9 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
   z-index: 2000;
   width: 200px;
   background: var(--paper-raised);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(34,34,34,0.14), 0 2px 8px rgba(34,34,34,0.08);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-float);
   padding: 10px 20px 16px;
   display: flex; flex-direction: column; align-items: center; gap: 0;
   animation: pomo-appear 200ms var(--ease);
@@ -541,17 +549,17 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 }
 .nmd-pomo-close:hover { background: var(--bg-hover); color: var(--fg1); }
 
-/* Candle SVG spacing */
-.nmd-pomo > svg { margin-top: 8px; }
-
-/* Candle animations */
+/* Pomodoro doodle — candle while working, mug on break */
+.nmd-pomo-doodle { margin-top: 8px; color: var(--fg2); }
+/* Steam only drifts while the timer runs (or as smoke right after it ends) */
+.nmd-pomo-doodle:not(.running):not(.done) .nmd-doodle-steam path {
+  animation-play-state: paused;
+  opacity: 0.25;
+}
 .candle-flame-flicker {
   animation: candle-flicker 0.7s ease-in-out infinite;
   transform-box: fill-box;
   transform-origin: 50% 100%;
-}
-.candle-smoke-wisps {
-  animation: candle-smoke 2.5s ease-out infinite;
 }
 
 .nmd-pomo-mode {
@@ -654,22 +662,10 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
   75%  { transform: scaleX(0.94) scaleY(1.06); opacity: 0.92; }
   100% { transform: scaleX(1)    scaleY(1);    opacity: 1; }
 }
-@keyframes candle-smoke {
-  0%   { transform: translateY(0);   opacity: 1; }
-  100% { transform: translateY(-6px); opacity: 0; }
-}
 @keyframes pomo-blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.15; }
 }
-@keyframes tea-steam {
-  0%   { transform: translateY(0);    opacity: 0.75; }
-  70%  { transform: translateY(-5px); opacity: 0.2; }
-  100% { transform: translateY(-7px); opacity: 0; }
-}
-.tea-steam-1 { animation: tea-steam 2.2s ease-in-out infinite; }
-.tea-steam-2 { animation: tea-steam 2.2s ease-in-out infinite; animation-delay: 0.7s; }
-.tea-steam-3 { animation: tea-steam 2.2s ease-in-out infinite; animation-delay: 1.4s; }
 
 /* Inline add-task — ghostly until hover */
 .nmd-add-task {
@@ -709,6 +705,8 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 .nmd-toast {
   position: fixed; left: 50%; bottom: 28px;
   transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  max-width: calc(100vw - 32px);
   background: var(--fg1); color: var(--bg);
   font-family: var(--font-mono); font-size: 12px;
   padding: 8px 14px; border-radius: 6px;
@@ -716,6 +714,22 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
   z-index: 300;
   animation: nmd-toast-in 180ms var(--ease);
 }
+.nmd-toast svg { flex-shrink: 0; }
+/* Toast background is the inverted fg color, so icon hues are tuned to read
+   on both the dark (light theme) and light (dark theme) pill. */
+.nmd-toast.success svg { color: #3ecf8e; }
+.nmd-toast.error svg { color: #f4647f; }
+.nmd-toast-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nmd-toast-action {
+  flex-shrink: 0;
+  border: none; cursor: pointer;
+  margin-left: 2px; padding: 3px 8px; border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.nmd-toast-action:hover { background: rgba(127, 127, 127, 0.25); text-decoration: none; }
 @keyframes nmd-toast-in {
   from { transform: translate(-50%, 10px); opacity: 0; }
   to   { transform: translate(-50%, 0);    opacity: 1; }
@@ -723,7 +737,7 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 
 /* Settings / modal */
 .nmd-modal-backdrop {
-  position: fixed; inset: 0; background: rgba(34,34,34,0.12);
+  position: fixed; inset: 0; background: rgba(16, 18, 24, 0.28);
   display: flex; align-items: center; justify-content: center;
   padding: 40px 20px;
   z-index: 150;
@@ -733,9 +747,10 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
   width: 480px; max-width: calc(100vw - 40px);
   background: var(--paper-raised);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-overlay);
   overflow: hidden;
+  animation: pomo-appear 160ms var(--ease);
 }
 .nmd-modal-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -926,9 +941,9 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 
 /* Custom date picker */
 .nmd-dp {
-  background: var(--bg);
+  background: var(--bg-raised);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   padding: 10px;
   width: 240px;
   font-family: inherit;
@@ -970,7 +985,7 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 .nmd-dp-day:disabled { opacity: 0.25; cursor: not-allowed; }
 
 .nmd-modal-input {
-  padding: 6px 10px; border-radius: 4px;
+  padding: 6px 10px; border-radius: var(--radius-md);
   background: var(--bg); border: 1px solid var(--border);
   font-family: inherit; font-size: 12px; color: var(--fg1);
   min-width: 180px;
@@ -992,17 +1007,18 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
 .nmd-theme-toggle svg { color: var(--fg2); }
 
 .nmd-btn {
-  padding: 6px 12px; border-radius: 4px;
-  background: var(--bg); border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: var(--radius-md);
+  background: var(--bg-raised); border: 1px solid var(--border);
   font-family: inherit; font-size: 12px; font-weight: 500;
   color: var(--fg1); cursor: pointer;
+  box-shadow: var(--shadow-sm);
   transition: all var(--dur-fast) var(--ease);
 }
 .nmd-btn:hover { background: var(--bg-hover); border-color: var(--border-strong); }
 .nmd-btn.primary {
-  background: var(--fg1); color: var(--bg); border-color: var(--fg1);
+  background: var(--fg1); color: var(--paper-raised); border-color: var(--fg1);
 }
-.nmd-btn.primary:hover { background: #000; }
+.nmd-btn.primary:hover { filter: brightness(1.18); }
 .nmd-btn.danger { color: var(--danger); }
 
 /* Section header */
@@ -1023,7 +1039,7 @@ body.nmd-nb-collapsed .nmd-sidebar.collapsed { display: none; }
   width: 280px;
   background: var(--paper-raised);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-float);
   padding: 12px 14px;
   z-index: 150;
@@ -1252,8 +1268,9 @@ textarea.nmd-mtg-input {
 .nmd-home-card {
   background: var(--bg-raised);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-xl);
   padding: 18px 20px 16px;
+  box-shadow: var(--shadow-card);
 }
 .nmd-home-card-header {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -1379,35 +1396,90 @@ textarea.nmd-mtg-input {
 }
 .nmd-home-pomo-stats svg { flex-shrink: 0; color: var(--fg4); }
 
-/* Upcoming meeting countdown banner */
-.nmd-home-countdown {
-  display: flex; align-items: center; gap: 12px;
+/* ── Next-meeting banner — hand-drawn margin-note style ─────────── */
+.nmd-home-next {
+  display: flex; align-items: center; gap: 14px;
   max-width: 1100px; margin: -12px auto 20px;
-  padding: 12px 16px; border-radius: 10px;
-  background: linear-gradient(135deg, rgba(81, 103, 244, 0.08), rgba(200, 158, 244, 0.06));
-  border: 1px solid rgba(81, 103, 244, 0.15);
+  padding: 12px 18px;
+  border-radius: var(--radius-xl);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
 }
-.nmd-home-countdown-icon {
-  display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: 8px;
-  background: var(--accent-blue); color: #fff;
+/* a faint accent wash bleeding in from the left, like a highlighter swipe */
+.nmd-home-next::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, var(--accent-tint) 0%, transparent 45%);
+  pointer-events: none;
 }
-.nmd-home-countdown-text {
-  display: flex; align-items: baseline; gap: 6px;
-  font-size: 14px; color: var(--fg1);
+.nmd-home-next-doodle {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  color: var(--fg2);
+  position: relative; z-index: 1;
 }
-.nmd-home-countdown-label { color: var(--fg3); font-weight: 400; }
-.nmd-home-countdown-title { font-weight: 600; }
-.nmd-home-countdown-time {
-  font-weight: 700; font-family: var(--font-mono);
-  color: var(--accent-blue); font-size: 15px;
+.nmd-home-next-body {
+  display: flex; flex-direction: column; gap: 1px;
+  min-width: 0; position: relative; z-index: 1;
 }
-.nmd-home-countdown-clear {
-  background: linear-gradient(135deg, rgba(122, 138, 95, 0.08), rgba(58, 138, 95, 0.06));
-  border-color: rgba(122, 138, 95, 0.15);
+.nmd-home-next-quip {
+  font-size: 11px; font-weight: 600; line-height: 1.3;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--accent-blue);
 }
-.nmd-home-countdown-icon.clear {
-  background: #7A8A5F;
+.nmd-home-next-main {
+  font-size: 14.5px; font-weight: 600; color: var(--fg1);
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+}
+.nmd-home-next-main.muted { font-weight: 400; color: var(--fg3); font-size: 13px; }
+.nmd-home-next-when {
+  font-weight: 400; color: var(--fg3); font-size: 13px;
+}
+.nmd-home-next-ringed {
+  position: relative; display: inline-block;
+  font-family: var(--font-mono); font-weight: 700;
+  color: var(--fg1); font-size: 14px;
+  padding: 1px 6px;
+}
+.nmd-home-next-ringed .nmd-doodle-ring {
+  position: absolute; inset: -5px -7px;
+  width: calc(100% + 14px); height: calc(100% + 10px);
+}
+
+/* ── Doodle motion ───────────────────────────────────────────────── */
+.nmd-doodle { display: block; }
+.nmd-doodle-steam path {
+  animation: doodle-steam 2.6s ease-out infinite;
+}
+.nmd-doodle-steam path:last-child { animation-delay: 1.1s; }
+@keyframes doodle-steam {
+  0%   { transform: translateY(0); opacity: 0.9; }
+  70%  { transform: translateY(-4px); opacity: 0.25; }
+  100% { transform: translateY(-6px); opacity: 0; }
+}
+.nmd-doodle-wiggle {
+  animation: doodle-wiggle 1.6s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+@keyframes doodle-wiggle {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  62% { transform: rotate(-5deg); }
+  70% { transform: rotate(4deg); }
+  78% { transform: rotate(-3deg); }
+  86% { transform: rotate(2deg); }
+}
+.nmd-doodle-ringlines path {
+  animation: doodle-ringlines 1.6s ease-in-out infinite;
+}
+@keyframes doodle-ringlines {
+  0%, 55%, 100% { opacity: 0.25; }
+  70% { opacity: 1; }
+}
+/* ── Greeting accents ───────────────────────────────────────────── */
+.nmd-greet-squiggle {
+  display: block;
+  margin: 2px 0 6px;
 }
 
 /* Mini week calendar */
@@ -1578,7 +1650,9 @@ textarea.nmd-mtg-input {
     grid-template-columns: 1fr !important;
   }
   .nmd-editor.nmd-mode-split .nmd-pane-preview { display: none; }
-  .nmd-collapse-btn { display: none; }
+
+  /* Lift toasts above the bottom nav rail */
+  .nmd-toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 
   /* TOC becomes a compact horizontal strip below the sticky header */
   .nmd-editor.nmd-mode-preview.with-toc {
@@ -1659,17 +1733,19 @@ textarea.nmd-mtg-input {
     gap: 0;
     border-bottom: none;
     min-height: 0;
+    margin: 0 12px 16px;
   }
   .nmd-day {
+    border-right: none;
     border-bottom: 1px solid var(--border);
     min-height: auto;
   }
   .nmd-day-header {
     position: sticky; top: 0; z-index: 2;
-    background: var(--bg);
+    background: var(--bg-raised);
     padding: 10px 14px;
   }
-  .nmd-day.weekend .nmd-day-header { background: var(--bg); }
+  .nmd-day.weekend .nmd-day-header { background: var(--bg-raised); }
   .nmd-day-body {
     max-height: none;
     overflow-y: visible;
@@ -1907,4 +1983,311 @@ textarea.nmd-mtg-input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* =========================================================================
+   Lofi radio pane — minimal, inky, a little wonky
+   ========================================================================= */
+.nmd-radio {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start;
+  height: 100vh; overflow-y: auto;
+  position: relative;
+  background: var(--bg);
+  color: var(--fg2);
+  padding: 28px 24px 48px;
+}
+/* margin: auto vertically centers when there's room, scrolls when not */
+.nmd-radio-stage {
+  position: relative;
+  width: 100%; max-width: 780px;
+  margin: auto;
+  display: flex; flex-direction: column; align-items: center;
+}
+.nmd-radio-center {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+/* In-flow slot the fixed video dock aligns itself to */
+.nmd-radio-screen {
+  width: min(400px, 100%);
+  aspect-ratio: 16 / 9;
+  margin-bottom: 6px;
+}
+
+/* Stray margin notes */
+.nmd-radio-margin-note { position: absolute; color: var(--fg4); opacity: 0.7; }
+.nmd-radio-margin-note.n1 { top: 12px; right: 7%; transform: rotate(9deg); }
+.nmd-radio-margin-note.n2 { bottom: 4%; left: 4%; transform: rotate(-12deg); }
+.nmd-radio-margin-note.n3 { display: none; top: 70px; left: 0; transform: rotate(-3deg); opacity: 0.85; color: var(--fg3); }
+@media (min-width: 1024px) {
+  .nmd-radio-margin-note.n3 { display: block; }
+}
+
+/* Boombox spools spin while playing (calm: slow + linear) */
+.nmd-doodle-spool { transform-box: fill-box; transform-origin: center; }
+.nmd-boombox.playing .nmd-doodle-spool { animation: nmd-spin 2.8s linear infinite; }
+@keyframes nmd-spin { to { transform: rotate(360deg); } }
+
+/* Scribble equalizer */
+.nmd-radio-eq {
+  display: flex; align-items: flex-end; gap: 4px;
+  height: 18px;
+}
+.nmd-radio-eq span {
+  width: 4px; height: 5px;
+  border-radius: 2px;
+  background: var(--accent-blue);
+  opacity: 0.35;
+  transform: rotate(2deg);
+}
+.nmd-radio-eq span:nth-child(even) { transform: rotate(-2deg); }
+.nmd-radio-eq.playing span { opacity: 0.85; animation: nmd-eq 1.7s ease-in-out infinite; }
+.nmd-radio-eq.playing span:nth-child(2) { animation-delay: 0.25s; }
+.nmd-radio-eq.playing span:nth-child(3) { animation-delay: 0.5s; }
+.nmd-radio-eq.playing span:nth-child(4) { animation-delay: 0.15s; }
+.nmd-radio-eq.playing span:nth-child(5) { animation-delay: 0.4s; }
+@keyframes nmd-eq {
+  0%, 100% { height: 5px; }
+  50% { height: 16px; }
+}
+
+.nmd-radio-now { text-align: center; }
+.nmd-radio-station {
+  font-family: var(--font-sans);
+  font-size: 17px; font-weight: 600;
+  color: var(--fg1);
+  letter-spacing: -0.01em;
+}
+.nmd-radio-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg4);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.nmd-radio-status.live { color: var(--accent-blue); }
+
+.nmd-radio-controls {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 2px;
+}
+.nmd-radio-play {
+  width: 46px; height: 46px;
+  border-radius: 50% 46% 50% 48% / 48% 50% 46% 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 2px solid var(--fg2);
+  color: var(--fg1);
+  cursor: pointer;
+  transition: background 120ms var(--ease), transform 120ms var(--ease);
+}
+.nmd-radio-play:hover { background: var(--bg-hover); transform: rotate(-2deg); }
+.nmd-radio-vol {
+  width: 110px;
+  accent-color: var(--accent-blue);
+}
+.nmd-radio-sleep {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 8px;
+  border: none; border-radius: 6px;
+  background: transparent;
+  color: var(--fg3);
+  font-family: var(--font-mono); font-size: 11px;
+  cursor: pointer;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+.nmd-radio-sleep:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-radio-sleep.on { color: var(--accent-blue); }
+
+.nmd-radio-focus {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 4px;
+  border: none; background: transparent;
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--fg3);
+  cursor: pointer;
+  padding: 4px 8px; border-radius: 4px;
+}
+.nmd-radio-focus:hover { color: var(--fg1); background: var(--bg-hover); }
+
+/* Poster row — tilted station cards in flow (no overlap games) */
+.nmd-radio-wall {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 14px;
+  margin-top: 28px;
+  width: 100%;
+}
+.nmd-radio-poster {
+  position: relative;
+  width: 148px;
+  padding: 14px 12px 10px;
+  display: flex; flex-direction: column; gap: 3px;
+  text-align: left;
+  background: var(--bg-raised);
+  border: 1.6px solid var(--fg3);
+  /* uneven radii read as hand-cut paper */
+  border-radius: 7px 10px 6px 9px / 9px 6px 10px 7px;
+  box-shadow: var(--shadow-sm);
+  color: var(--fg2);
+  cursor: pointer;
+  transition: transform 140ms var(--ease), box-shadow 140ms var(--ease), border-color 140ms var(--ease);
+}
+/* washi-tape strip pinning each poster up */
+.nmd-radio-poster::before {
+  content: "";
+  position: absolute;
+  top: -7px; left: 50%;
+  width: 38px; height: 13px;
+  transform: translateX(-50%) rotate(-3deg);
+  background: var(--accent-tint-strong);
+  border-radius: 2px;
+  opacity: 0.9;
+}
+.nmd-radio-poster.p0 { transform: rotate(-2.5deg); }
+.nmd-radio-poster.p1 { transform: rotate(2deg); }
+.nmd-radio-poster.p2 { transform: rotate(-1.5deg); }
+.nmd-radio-poster.p3 { transform: rotate(2.5deg); }
+.nmd-radio-poster.p4 { transform: rotate(-2deg); }
+.nmd-radio-poster.p5 { transform: rotate(1.5deg); }
+.nmd-radio-poster:hover { transform: rotate(0deg) scale(1.05); box-shadow: var(--shadow-float); z-index: 2; }
+.nmd-radio-poster.active { border-color: var(--accent-blue); color: var(--fg1); }
+.nmd-radio-poster-name {
+  font-family: var(--font-sans);
+  font-size: 13px; font-weight: 600;
+  color: var(--fg1);
+}
+.nmd-radio-poster-sq { margin: -2px 0 1px; }
+.nmd-radio-poster-sub {
+  font-size: 11px;
+  color: var(--fg3);
+  line-height: 1.35;
+}
+.nmd-radio-poster-by {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--fg4);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.nmd-radio-credit {
+  margin-top: 26px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg4);
+}
+.nmd-radio-credit a { color: var(--fg3); }
+
+/* Live dot on the rail button while the radio plays */
+.nmd-rail-live {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  animation: nmd-live 2.4s ease-in-out infinite;
+}
+@keyframes nmd-live {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* The YouTube "TV" — one persistent framed player.
+   .stage: pinned above the radio page content.
+   .mini:  corner mini-player while playing on other tabs (click = open radio).
+   .off:   parked invisibly (nothing playing). Never display:none — that can
+   interrupt the iframe. */
+.nmd-yt-dock {
+  position: fixed;
+  z-index: 90;
+  background: #0d0f14;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9; /* fallback; stage mode gets exact inline dimensions */
+  box-shadow: var(--shadow-float);
+}
+.nmd-yt-dock::before {
+  /* washi-tape strip, same as the station posters */
+  content: "";
+  position: absolute;
+  top: -10px; left: 50%;
+  width: 44px; height: 14px;
+  transform: translateX(-50%) rotate(-2.5deg);
+  background: var(--accent-tint-strong);
+  border-radius: 2px;
+  z-index: 3;
+}
+/* hand-drawn outline hugging the screen */
+.nmd-yt-scribble {
+  position: absolute;
+  inset: -7px;
+  width: calc(100% + 14px);
+  height: calc(100% + 14px);
+  color: var(--fg2);
+  pointer-events: none;
+  z-index: 2;
+}
+.nmd-yt-dock #nmd-yt-player {
+  position: static;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 7px;
+  background: #000;
+}
+.nmd-yt-dock.stage {
+  top: 84px;
+  /* center within the pane, not the viewport (rail is 52px wide) */
+  left: calc(50% + 26px);
+  transform: translateX(-50%);
+  width: min(400px, calc(100vw - 92px));
+}
+.nmd-yt-dock.mini {
+  bottom: 18px; right: 18px;
+  width: 248px;
+  cursor: pointer;
+  transition: transform 140ms var(--ease);
+}
+.nmd-yt-dock.mini:hover { transform: rotate(-1deg) scale(1.02); }
+.nmd-yt-dock.mini::after {
+  /* swallow clicks so the whole card opens the radio tab */
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.nmd-yt-dock.off {
+  visibility: hidden;
+  pointer-events: none;
+  bottom: 18px; right: 18px;
+  width: 248px;
+}
+
+/* Mobile tweaks */
+@media (max-width: 720px) {
+  .nmd-radio {
+    height: auto; min-height: calc(100vh - 60px);
+    padding: 24px 16px 40px;
+  }
+  .nmd-yt-dock.mini,
+  .nmd-yt-dock.off {
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+    right: 12px;
+    width: 200px;
+  }
+  .nmd-radio-margin-note { display: none; }
+  .nmd-radio-poster { width: calc(50% - 8px); max-width: 168px; }
+  .nmd-radio-credit { margin-top: 18px; }
+}
+
+/* Calm by request — and still for those who ask for no motion at all */
+@media (prefers-reduced-motion: reduce) {
+  .nmd-boombox.playing .nmd-doodle-spool,
+  .nmd-radio-eq.playing span,
+  .nmd-rail-live { animation: none; }
 }

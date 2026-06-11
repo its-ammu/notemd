@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import NotebooksPane from './components/NotebooksPane';
 import WeeklyTracker from './components/WeeklyTracker';
 import HomePane from './components/HomePane';
 import AuthScreen from './components/AuthScreen';
 import PomodoroTimer from './components/PomodoroTimer';
+import RadioPane from './components/RadioPane';
+import { useRadio } from './hooks/useRadio';
 import { useStoredState } from './hooks/useStoredState';
 import { useAuth } from './hooks/useAuth';
 import { useCloudData } from './hooks/useCloudData';
@@ -43,10 +45,54 @@ function App() {
   const [showHowTo, setShowHowTo] = useState(false);
   const [howToExpanded, setHowToExpanded] = useState(false);
   const [howToTab, setHowToTab] = useState('overview');
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState(null); // { text, type, action }
+  const toastTimer = useRef(null);
   const [theme, setTheme] = useStoredState('nmd_theme', 'light');
   const [pomodoroConfig, setPomodoroConfig] = useState(null); // { task, workSecs }
+  // { dateKey, taskId? , meetingId? } — set when a storyboard badge wants the
+  // tracker to jump to a linked task/meeting.
+  const [trackerFocus, setTrackerFocus] = useState(null);
   const [pomoStats, setPomoStats] = useState({ total: 0, mins: 0, byTask: {} });
+  // Lives here (not in RadioPane) so the stream keeps playing across tabs.
+  const radio = useRadio({ onError: msg => showToast(msg, { type: 'error', duration: 4000 }) });
+
+  // Warm up the YouTube player as soon as the radio tab opens, so the first
+  // press of play doesn't wait on the iframe API. Only once the main UI is
+  // rendered — earlier the player container doesn't exist yet.
+  useEffect(() => {
+    if (tab === 'radio' && user && loaded) radio.ensurePlayer().catch(() => {});
+  }, [tab, user, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The fixed video dock pins itself to RadioPane's in-flow screen slot.
+  const [screenEl, setScreenEl] = useState(null);
+  const [screenRect, setScreenRect] = useState(null);
+  useEffect(() => {
+    // When the radio tab unmounts, screenEl goes null. Clear the stale rect
+    // so the dock falls back to CSS aspect-ratio until a fresh measurement.
+    if (!screenEl) { setScreenRect(null); return; }
+    const update = () => {
+      const r = screenEl.getBoundingClientRect();
+      // Skip zero-height reads (element not yet laid out)
+      if (r.width === 0 || r.height === 0) return;
+      setScreenRect(prev =>
+        prev && prev.top === r.top && prev.left === r.left && prev.width === r.width && prev.height === r.height
+          ? prev
+          : { top: r.top, left: r.left, width: r.width, height: r.height });
+    };
+    // Defer the first measurement to after layout so getBoundingClientRect
+    // returns the real dimensions, not a pre-layout zero.
+    const raf = requestAnimationFrame(update);
+    const ro = new ResizeObserver(update);
+    ro.observe(screenEl);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true); // capture nested scrollers
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [screenEl]);
 
   // Load pomo sessions from DB when user signs in
   useEffect(() => {
@@ -75,9 +121,18 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const showToast = (text) => {
-    setToast(text);
-    setTimeout(() => setToast(null), 1800);
+  // showToast('Saved') or showToast('Page deleted', { type: 'success',
+  // action: { label: 'Undo', onClick } }). Toasts with an action linger
+  // longer so there's time to click it.
+  const showToast = (text, opts = {}) => {
+    clearTimeout(toastTimer.current);
+    setToast({ text, type: opts.type || 'info', action: opts.action || null });
+    toastTimer.current = setTimeout(() => setToast(null), opts.duration ?? (opts.action ? 5000 : 1800));
+  };
+
+  const dismissToast = () => {
+    clearTimeout(toastTimer.current);
+    setToast(null);
   };
 
   if (!isSupabaseConfigured) {
@@ -151,7 +206,7 @@ function App() {
         showToast('Backup restored');
         setShowSettings(false);
       } catch (err) {
-        alert('Could not import: ' + err.message);
+        showToast('Could not import: ' + err.message, { type: 'error', duration: 4000 });
       }
     };
     reader.readAsText(file);
@@ -173,7 +228,7 @@ function App() {
 
   return (
     <div
-      className={'nmd-app-shell' + (tab === 'tracker' || tab === 'home' ? ' tracker-layout' : '')}
+      className={'nmd-app-shell' + (tab === 'tracker' || tab === 'home' || tab === 'radio' ? ' tracker-layout' : '')}
     >
       <nav className="nmd-rail">
         <div className="nmd-rail-logo"><span>m</span></div>
@@ -195,6 +250,15 @@ function App() {
             <path d="M3 9h18M8 3v4M16 3v4" />
             <path d="M7 13h3M13 13h4M7 17h6" strokeWidth="1.2" />
           </svg>
+        </RailBtn>
+        <RailBtn id="radio" label="Lofi radio" active={tab === 'radio'} onClick={() => setTab('radio')}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="9" width="18" height="11" rx="2" />
+            <path d="m7.5 9 9-5" />
+            <circle cx="9" cy="14.5" r="2.5" />
+            <path d="M15 12.5h3M15 16.5h2" />
+          </svg>
+          {radio.playing && <span className="nmd-rail-live" />}
         </RailBtn>
 
         <div className="nmd-rail-spacer" />
@@ -238,6 +302,10 @@ function App() {
           setActiveSel={setActiveSel}
           saving={saving}
           syncError={syncError}
+          tasksByDate={tasksByDate}
+          meetingsByDate={meetingsByDate}
+          onOpenTracker={(focus) => { setTrackerFocus(focus); setTab('tracker'); }}
+          showToast={showToast}
         />
       )}
       {tab === 'tracker' && (
@@ -251,6 +319,19 @@ function App() {
           onNavigateToPage={(nbId, pageId) => { setActiveSel({ nbId, pageId }); setTab('notebooks'); }}
           onStartPomodoro={startPomodoro}
           pomoStats={pomoStats}
+          focusRequest={trackerFocus}
+          onFocusHandled={() => setTrackerFocus(null)}
+        />
+      )}
+
+      {tab === 'radio' && (
+        <RadioPane
+          radio={radio}
+          screenRef={setScreenEl}
+          onStartFocus={() => {
+            if (!radio.playing && !radio.connecting) radio.play();
+            startPomodoro(null);
+          }}
         />
       )}
 
@@ -424,6 +505,7 @@ function App() {
                       <li><b>Right-click</b> notebooks and pages for context menus with rename, duplicate, recolor, and delete.</li>
                       <li><b>Long-press</b> on mobile opens the same context menu.</li>
                       <li><b>Nothing needs saving</b> — close the tab mid-sentence and it'll be there when you return.</li>
+                      <li><b>Lofi radio</b> — the boombox icon on the rail streams chill stations while you work; it keeps playing across tabs.</li>
                       <li><b>Light/Dark mode</b> — toggle in Settings to match your preference.</li>
                       <li><b>Export backups</b> — download a JSON file anytime from Settings.</li>
                     </ul>
@@ -469,7 +551,7 @@ function App() {
                     <p><b>Search.</b> Use "Find in notes" to search all titles and content. Matches appear with highlighted snippets.</p>
                     <p><b>Tags.</b> Add tags to pages using the tag bar below the title. Filter by tags using the tag dropdown in the search bar.</p>
                     <p><b>Paper styles.</b> Choose between plain, dotted, or squared paper backgrounds from the header.</p>
-                    <p><b>Collapse sidebar.</b> Click the chevron in the header to hide the notebook list for more writing space.</p>
+                    <p><b>Focus mode.</b> Click the focus button in the header to hide everything but the page for distraction-free writing. Press <kbd>Esc</kbd> to exit.</p>
                   </div>
                   <div className="nmd-howto-cheat">
                     <div className="nmd-howto-cheat-title">Markdown reference</div>
@@ -542,7 +624,53 @@ function App() {
         </div>
       )}
 
-      {toast && <div className="nmd-toast">{toast}</div>}
+      {/* YouTube "TV": framed on the radio page, a corner mini-player while
+          playing on other tabs, parked invisibly otherwise. One persistent
+          node — moving/remounting an iframe would restart the stream. */}
+      <div
+        className={'nmd-yt-dock ' + (tab === 'radio' ? 'stage' : (radio.playing || radio.connecting) ? 'mini' : 'off')}
+        style={tab === 'radio' && screenRect ? {
+          top: screenRect.top,
+          left: screenRect.left,
+          width: screenRect.width,
+          height: screenRect.height,
+          transform: 'none',
+        } : undefined}
+        onClick={tab !== 'radio' ? () => setTab('radio') : undefined}
+        title={tab !== 'radio' ? 'Open radio' : undefined}
+      >
+        <div id="nmd-yt-player" />
+        <svg className="nmd-yt-scribble" viewBox="0 0 400 240" preserveAspectRatio="none" aria-hidden="true">
+          <path
+            d="M14 9 C90 4 180 6 250 5 C310 4 370 6 388 11 C393 50 392 110 390 150 C389 190 391 215 386 229 C300 234 200 231 120 232 C80 233 30 232 13 228 C8 190 9 130 10 90 C10 55 9 30 14 9 Z"
+            fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" vectorEffect="non-scaling-stroke"
+          />
+          <path
+            d="M18 14 C120 10 300 9 384 14 C388 70 388 170 383 224 C280 229 110 228 17 224 C13 160 14 70 18 14"
+            fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.35" vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      </div>
+
+      {toast && (
+        <div className={'nmd-toast ' + toast.type} role="status">
+          {toast.type === 'success' && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.5 12.5 2.5 2.5 4.5-5" /></svg>
+          )}
+          {toast.type === 'error' && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5" /><circle cx="12" cy="16.5" r="0.5" fill="currentColor" /></svg>
+          )}
+          <span className="nmd-toast-text">{toast.text}</span>
+          {toast.action && (
+            <button
+              className="nmd-toast-action"
+              onClick={() => { toast.action.onClick(); dismissToast(); }}
+            >
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

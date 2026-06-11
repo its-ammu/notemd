@@ -4,6 +4,7 @@ import { getPublicPage } from '../lib/sync';
 import { supabase } from '../lib/supabase';
 import { relTime } from '../utils/time';
 import { parseHeadings } from '../utils/markdown';
+import { tagStyle } from '../utils/tags';
 
 // Derive a 1–2 letter acronym from a name or email local-part.
 function initials(s) {
@@ -138,7 +139,7 @@ export default function PublicPage({ token }) {
             {page.updated && <span>Updated {relTime(page.updated)}</span>}
             {page.tags.length > 0 && (
               <span className="nmd-public-tags">
-                {page.tags.map(t => <span key={t} className="nmd-page-tag">{t}</span>)}
+                {page.tags.map(t => <span key={t} className="nmd-page-tag" style={tagStyle(t)}>{t}</span>)}
               </span>
             )}
           </div>

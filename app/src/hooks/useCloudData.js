@@ -45,10 +45,12 @@ export function useCloudData(userId) {
         // One-time migration: re-upload everything so rows stored as plaintext
         // before encryption was enabled get rewritten as ciphertext. State is
         // always plaintext in memory, so diffing against an empty baseline
-        // upserts every row encrypted. Idempotent; guarded to run once per device.
+        // upserts every row encrypted. Only worth doing when plaintext rows
+        // actually exist — a blanket re-upload would rewrite every row (and
+        // bump its updated_at) on every new device/browser.
         if (!localStorage.getItem(MIGRATION_FLAG)) {
           try {
-            await pushChanges(userId, EMPTY, data);
+            if (data.needsEncryptionMigration) await pushChanges(userId, EMPTY, data);
             localStorage.setItem(MIGRATION_FLAG, '1');
           } catch (e) {
             console.warn('[NoteMD] Encryption migration deferred to next load', e);

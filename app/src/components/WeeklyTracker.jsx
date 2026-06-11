@@ -8,7 +8,7 @@ import { expandRecurringMeetings } from '../utils/meetings';
 import { PRIO } from '../utils/constants';
 import { HelpIcon } from './Tooltip';
 
-export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage, onStartPomodoro, pomoStats }) {
+export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage, onStartPomodoro, pomoStats, focusRequest, onFocusHandled }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [draggingId, setDraggingId] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
@@ -17,6 +17,23 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
   const todayDow = new Date().getDay();
   const [dayOffset, setDayOffset] = useState(todayDow === 0 ? 6 : todayDow - 1);
   useEffect(() => { localStorage.setItem('nmd_tracker_mode', viewMode); }, [viewMode]);
+
+  // Jump to a linked task/meeting (e.g. from a storyboard card badge):
+  // navigate to its week/day and open the matching dialog.
+  useEffect(() => {
+    if (!focusRequest) return;
+    const { dateKey, taskId, meetingId } = focusRequest;
+    const d = new Date(dateKey + 'T00:00:00');
+    setWeekStart(startOfWeek(d));
+    const dow = d.getDay();
+    if (viewMode === 'day') setDayOffset(dow === 0 ? 6 : dow - 1);
+    // Weekend items aren't visible in workweek view; widen so the dialog can resolve.
+    if (viewMode === 'workweek' && (dow === 0 || dow === 6)) setViewMode('full');
+    if (taskId) setEditingTask({ dateKey, id: taskId });
+    if (meetingId) setEditingMeeting({ dateKey, id: meetingId });
+    onFocusHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { DoodleCandle, DoodleMug } from './Doodles';
 
 const WORK_SECS = 25 * 60;
 const BREAK_SECS = 5 * 60;
@@ -39,98 +40,6 @@ async function playChime(mode) {
       osc.stop(ctx.currentTime + t + 0.8);
     });
   } catch (_) { }
-}
-
-function CandlePixel({ progress, phase, running }) {
-  const MAX_WAX = 10;
-  const HOLDER_Y = 14;
-  const visibleWax = Math.max(1, Math.ceil(MAX_WAX * progress));
-  const waxTop = HOLDER_Y - visibleWax;
-  const wickY = waxTop - 1;
-  const showFlame = phase !== 'done';
-  const showSmoke = phase === 'done';
-  const flickerCls = running && showFlame ? 'candle-flame-flicker' : '';
-  const WAX = '#F5F0E6', WAX_SHADE = '#DDD5C0', WAX_HILITE = '#FDFBF5';
-  const HOLDER = '#9C7E5A', HOLDER_DRK = '#7A6040', WICK = '#3E2723';
-  const showDrip = progress < 0.85 && progress > 0.15;
-
-  return (
-    <svg width="60" height="80" viewBox="0 0 12 16"
-      style={{ imageRendering: 'pixelated', display: 'block', overflow: 'visible' }}>
-      <rect x="1" y={HOLDER_Y} width="10" height="1" fill={HOLDER} />
-      <rect x="0" y={HOLDER_Y + 1} width="12" height="2" fill={HOLDER_DRK} />
-      <rect x="1" y={HOLDER_Y + 1} width="10" height="1" fill={HOLDER} />
-      <rect x="2" y={waxTop} width="1" height={visibleWax} fill={WAX_SHADE} />
-      <rect x="3" y={waxTop} width="6" height={visibleWax} fill={WAX} />
-      <rect x="4" y={waxTop} width="1" height={visibleWax} fill={WAX_HILITE} />
-      <rect x="9" y={waxTop} width="1" height={visibleWax} fill={WAX_SHADE} />
-      {showDrip && <rect x="9" y={waxTop + 1} width="1" height="2" fill={WAX_SHADE} />}
-      <rect x="5" y={wickY} width="2" height="1" fill={WICK} />
-      {showFlame && (
-        <g className={flickerCls} style={{ transformBox: 'fill-box', transformOrigin: '50% 100%' }}>
-          <rect x="5" y={wickY - 4} width="2" height="1" fill="#FFF9C4" />
-          <rect x="4" y={wickY - 3} width="4" height="1" fill="#FFE082" />
-          <rect x="3" y={wickY - 2} width="6" height="1" fill="#FFB300" />
-          <rect x="4" y={wickY - 1} width="4" height="1" fill="#FF8F00" opacity="0.8" />
-        </g>
-      )}
-      {showSmoke && (
-        <g className="candle-smoke-wisps">
-          <rect x="5" y={wickY - 2} width="2" height="1" fill="#AAA" opacity="0.5" />
-          <rect x="4" y={wickY - 4} width="2" height="1" fill="#AAA" opacity="0.35" />
-          <rect x="6" y={wickY - 6} width="2" height="1" fill="#AAA" opacity="0.2" />
-        </g>
-      )}
-      {running && showFlame && (
-        <ellipse cx="6" cy={wickY - 2} rx="3" ry="2.5" fill="#FFB300" opacity="0.12" />
-      )}
-    </svg>
-  );
-}
-
-function TeaCupPixel({ running, phase }) {
-  const RIM = '#EDD5B3';
-  const BODY = '#D4A96A';
-  const DARK = '#A8784A';
-  const TEA = '#C07830';
-  const SAUCER = '#C8A87A';
-  const STEAM = '#A0AFA8';
-
-  return (
-    <svg width="60" height="80" viewBox="0 0 12 16"
-      style={{ imageRendering: 'pixelated', display: 'block', overflow: 'visible' }}>
-
-      {/* Steam wisps — animate when running */}
-      {running && phase !== 'done' && (
-        <>
-          <rect className="tea-steam-1" x="3" y="2" width="1" height="2" fill={STEAM} />
-          <rect className="tea-steam-2" x="6" y="1" width="1" height="2" fill={STEAM} />
-          <rect className="tea-steam-3" x="9" y="2" width="1" height="2" fill={STEAM} />
-        </>
-      )}
-
-      {/* Rim highlight */}
-      <rect x="2" y="4" width="8" height="1" fill={RIM} />
-      {/* Cup walls */}
-      <rect x="2" y="5" width="1" height="5" fill={DARK} />
-      <rect x="9" y="5" width="1" height="5" fill={DARK} />
-      {/* Tea fill */}
-      <rect x="3" y="5" width="6" height="1" fill={TEA} />
-      {/* Cup body fill */}
-      <rect x="3" y="6" width="6" height="4" fill={BODY} />
-      {/* Cup bottom */}
-      <rect x="2" y="10" width="8" height="1" fill={DARK} />
-
-      {/* Handle */}
-      <rect x="10" y="5" width="1" height="1" fill={DARK} />
-      <rect x="11" y="6" width="1" height="3" fill={DARK} />
-      <rect x="10" y="9" width="1" height="1" fill={DARK} />
-
-      {/* Saucer */}
-      <rect x="1" y="11" width="10" height="1" fill={SAUCER} />
-      <rect x="0" y="12" width="12" height="1" fill={DARK} />
-    </svg>
-  );
 }
 
 export default function PomodoroTimer({ task, onClose, onSessionComplete, onToast, workSecs = WORK_SECS, breakSecs = BREAK_SECS }) {
@@ -263,10 +172,12 @@ export default function PomodoroTimer({ task, onClose, onSessionComplete, onToas
         </svg>
       </button>
 
-      {mode === 'work'
-        ? <CandlePixel progress={progress} phase={phase} running={running} />
-        : <TeaCupPixel running={running} phase={phase} />
-      }
+      <div className={'nmd-pomo-doodle' + (running ? ' running' : '') + (phase === 'done' ? ' done' : '')}>
+        {mode === 'work'
+          ? <DoodleCandle progress={progress} phase={phase} running={running} size={62} />
+          : <DoodleMug size={58} />
+        }
+      </div>
 
       <div className={'nmd-pomo-mode' + (mode === 'break' ? ' is-break' : '') + (phase === 'done' ? ' is-done' : '')}>
         {modeLabel}

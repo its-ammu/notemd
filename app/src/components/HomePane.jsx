@@ -2,15 +2,74 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { fmtDate, relTime, startOfWeek, addDays } from '../utils/time';
 import { getMeetingsForDay, expandRecurringMeetings } from '../utils/meetings';
 import EmptyState from './EmptyState';
+import { DoodleMug, DoodleClock, DoodleSquiggle, DoodleRing } from './Doodles';
 
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 5) return 'Still up?';
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  if (h < 22) return 'Good evening';
-  return 'Good night';
+// Quirky greetings, rotated per day (stable across renders so the header
+// doesn't flicker — same day, same line).
+const GREETINGS = {
+  // Every line must read naturally with ", <name>" tucked in before the
+  // trailing punctuation — e.g. "Still awake?" -> "Still awake, Sam?"
+  smallHours: [
+    'Still awake?',
+    'The moon says hi',
+    'Up before the birds?',
+    'Shouldn\u2019t you be dreaming?',
+  ],
+  morning: [
+    'Rise and scribble',
+    'Good morning',
+    'Top of the morning',
+    'A fresh page awaits',
+    'Ready to conquer the day?',
+  ],
+  afternoon: [
+    'Good afternoon',
+    'Still crushing it?',
+    'Hope the day\u2019s treating you well',
+    'Back at it?',
+    'Onward and upward',
+  ],
+  evening: [
+    'Good evening',
+    'Home stretch now',
+    'How was the day?',
+    'Evening plans?',
+  ],
+  night: [
+    'Burning the midnight oil?',
+    'One last scribble?',
+    'Don\u2019t stay up too late',
+    'Time to wrap it up?',
+  ],
+};
+
+function dayOfYear(d) {
+  return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
 }
+
+function greeting(name) {
+  const now = new Date();
+  const h = now.getHours();
+  const bucket =
+    h < 5 ? 'smallHours' :
+    h < 12 ? 'morning' :
+    h < 18 ? 'afternoon' :
+    h < 22 ? 'evening' : 'night';
+  const pool = GREETINGS[bucket];
+  const line = pool[dayOfYear(now) % pool.length];
+  if (!name) return line;
+  // Tuck the name in before any trailing punctuation:
+  // "One last scribble?" -> "One last scribble, Sam?"
+  const m = line.match(/^(.*?)([?!…]+)$/);
+  return m ? `${m[1]}, ${name}${m[2]}` : `${line}, ${name}`;
+}
+
+// Quirky lines for a meeting-free horizon, rotated per day.
+const CLEAR_QUIPS = [
+  'The calendar bows to you.',
+  'All quiet on the calendar front.',
+  'Nothing booked. Suspicious… but nice.',
+];
 
 function fmtTime(t) {
   if (!t) return '';
@@ -154,35 +213,45 @@ export default function HomePane({
   return (
     <main className="nmd-home">
       <header className="nmd-home-header">
-        <h1>{greeting()}{displayName ? `, ${displayName}` : ''}</h1>
+        <h1>{greeting(displayName)}</h1>
+        <DoodleSquiggle className="nmd-greet-squiggle" />
         <p>{todayLabel}</p>
       </header>
 
       {nextMeeting && (nextMeeting.inProgress || nextMeeting.minsUntil <= 240) ? (
-        <div className="nmd-home-countdown">
-          <div className="nmd-home-countdown-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-            </svg>
+        <div className="nmd-home-next">
+          <div className="nmd-home-next-doodle">
+            <DoodleClock size={46} wiggle={nextMeeting.inProgress || nextMeeting.minsUntil <= 30} />
           </div>
-          <div className="nmd-home-countdown-text">
-            {nextMeeting.inProgress ? (
-              <><span className="nmd-home-countdown-label">In progress:</span> <span className="nmd-home-countdown-title">{nextMeeting.title}</span></>
-            ) : (
-              <><span className="nmd-home-countdown-title">{nextMeeting.title}</span> <span className="nmd-home-countdown-label">in</span> <span className="nmd-home-countdown-time">{formatCountdown(nextMeeting.minsUntil)}</span></>
-            )}
-          </div>
+          {nextMeeting.inProgress ? (
+            <div className="nmd-home-next-body">
+              <span className="nmd-home-next-quip">happening right now</span>
+              <span className="nmd-home-next-main">{nextMeeting.title || 'Untitled meeting'}</span>
+            </div>
+          ) : (
+            <div className="nmd-home-next-body">
+              <span className="nmd-home-next-quip">up next on the docket</span>
+              <span className="nmd-home-next-main">
+                {nextMeeting.title || 'Untitled meeting'}
+                <span className="nmd-home-next-when">
+                  in&nbsp;
+                  <span className="nmd-home-next-ringed">
+                    {formatCountdown(nextMeeting.minsUntil)}
+                    <DoodleRing />
+                  </span>
+                </span>
+              </span>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="nmd-home-countdown nmd-home-countdown-clear">
-          <div className="nmd-home-countdown-icon clear">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
+        <div className="nmd-home-next clear">
+          <div className="nmd-home-next-doodle">
+            <DoodleMug size={46} />
           </div>
-          <div className="nmd-home-countdown-text">
-            <span className="nmd-home-countdown-title">No meetings soon</span>
-            <span className="nmd-home-countdown-label">~ yayy!</span>
+          <div className="nmd-home-next-body">
+            <span className="nmd-home-next-quip">{CLEAR_QUIPS[dayOfYear(new Date()) % CLEAR_QUIPS.length]}</span>
+            <span className="nmd-home-next-main muted">No meetings soon ~ yayy.</span>
           </div>
         </div>
       )}

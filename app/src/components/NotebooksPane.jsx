@@ -5,7 +5,9 @@ import { NB_COLORS } from '../utils/constants';
 import { relTime } from '../utils/time';
 import { parseHeadings } from '../utils/markdown';
 import { setPagePublic } from '../lib/sync';
+import { tagStyle } from '../utils/tags';
 import EmptyState from './EmptyState';
+import NotebookBoard from './NotebookBoard';
 import { HelpIcon } from './Tooltip';
 
 // Long-press handlers for mobile equivalent of right-click.
@@ -46,6 +48,84 @@ function makeLongPressProps(handler, timerRef) {
   };
 }
 
+// Tag input with autocomplete: suggests existing tags as you type, Enter or
+// comma commits, arrows navigate, Backspace on an empty field removes the
+// last tag.
+function TagInput({ allTags, existing, onAdd, onRemoveLast }) {
+  const [value, setValue] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [hi, setHi] = useState(0);
+
+  const existingSet = new Set((existing || []).map(t => t.toLowerCase()));
+  const q = value.trim().toLowerCase();
+  const suggestions = allTags.filter(t => !existingSet.has(t) && (!q || t.includes(q))).slice(0, 6);
+  const showCreate = !!q && !existingSet.has(q) && !allTags.includes(q);
+  const optionCount = suggestions.length + (showCreate ? 1 : 0);
+  const open = focused && optionCount > 0;
+  // Clamp instead of resetting in an effect — the option list can shrink as
+  // the user types or tags get added.
+  const sel = optionCount > 0 ? Math.min(hi, optionCount - 1) : 0;
+
+  const commit = (tag) => {
+    const t = (tag || '').trim().toLowerCase();
+    if (t && !existingSet.has(t)) onAdd(t);
+    setValue('');
+    setHi(0);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown' && open) { e.preventDefault(); setHi((sel + 1) % optionCount); }
+    else if (e.key === 'ArrowUp' && open) { e.preventDefault(); setHi((sel - 1 + optionCount) % optionCount); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (open && sel < suggestions.length) commit(suggestions[sel]);
+      else commit(value);
+    }
+    else if (e.key === ',') { e.preventDefault(); commit(value); }
+    else if (e.key === 'Escape') { e.target.blur(); }
+    else if (e.key === 'Backspace' && value === '') { onRemoveLast(); }
+  };
+
+  return (
+    <div className="nmd-tag-input-wrap">
+      <input
+        className="nmd-tag-input"
+        placeholder="+ Add tag"
+        value={value}
+        onChange={e => { setValue(e.target.value); setHi(0); }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onKeyDown={onKeyDown}
+      />
+      {open && (
+        <div className="nmd-tag-suggest" role="listbox">
+          {suggestions.map((t, i) => (
+            <button
+              key={t}
+              className={'nmd-tag-suggest-item' + (i === sel ? ' hi' : '')}
+              onMouseDown={e => { e.preventDefault(); commit(t); }}
+              onMouseEnter={() => setHi(i)}
+            >
+              <span className="nmd-tag-dot" style={tagStyle(t)} />
+              {t}
+            </button>
+          ))}
+          {showCreate && (
+            <button
+              className={'nmd-tag-suggest-item create' + (sel === suggestions.length ? ' hi' : '')}
+              onMouseDown={e => { e.preventDefault(); commit(q); }}
+              onMouseEnter={() => setHi(suggestions.length)}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+              Create &ldquo;{q}&rdquo;
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function fmtDate(iso) {
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -79,7 +159,7 @@ function makeSnippet(body, q) {
   );
 }
 
-export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setActiveSel, saving, syncError }) {
+export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setActiveSel, saving, syncError, tasksByDate, meetingsByDate, onOpenTracker, showToast }) {
   const [openIds, setOpenIds] = useState(() => new Set(notebooks.map(n => n.id).slice(0, 3)));
   const [query, setQuery] = useState('');
   const [tagFilters, setTagFilters] = useState([]);
@@ -89,8 +169,10 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   const [menuState, setMenuState] = useState(null);
   const [renamingNbId, setRenamingNbId] = useState(null);
   const [view, setView] = useState(() => localStorage.getItem('nmd_view') || 'rendered');
+  const [boardOpen, setBoardOpen] = useState(() => localStorage.getItem('nmd_nb_board') === 'on');
   const [mobileTree, setMobileTree] = useState(true);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('nmd_nb_sidebar') === 'collapsed');
+  // Not persisted on purpose — reloading into a chrome-less view is disorienting.
+  const [focusMode, setFocusMode] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
@@ -101,13 +183,19 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   const longPressRef = useRef(null);
 
   useEffect(() => { localStorage.setItem('nmd_view', view); }, [view]);
+  useEffect(() => { localStorage.setItem('nmd_nb_board', boardOpen ? 'on' : 'off'); }, [boardOpen]);
   useEffect(() => {
-    localStorage.setItem('nmd_nb_sidebar', sidebarCollapsed ? 'collapsed' : 'open');
-    document.body.classList.toggle('nmd-nb-collapsed', sidebarCollapsed);
-    return () => document.body.classList.remove('nmd-nb-collapsed');
-  }, [sidebarCollapsed]);
+    document.body.classList.toggle('nmd-focus', focusMode);
+    return () => document.body.classList.remove('nmd-focus');
+  }, [focusMode]);
+  useEffect(() => {
+    if (!focusMode) return;
+    const onKey = (e) => { if (e.key === 'Escape') setFocusMode(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [focusMode]);
 
-  const openPage = (nbId, pageId) => { setActiveSel({ nbId, pageId }); setMobileTree(false); };
+  const openPage = (nbId, pageId) => { setActiveSel({ nbId, pageId }); setBoardOpen(false); setMobileTree(false); };
 
   const activeNb = notebooks.find(n => n.id === activeSel.nbId) || notebooks[0];
   const activePage = activeNb?.pages.find(p => p.id === activeSel.pageId) || activeNb?.pages[0];
@@ -132,7 +220,13 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   const updateNb = (id, patch) => setNotebooks(nbs => nbs.map(nb => nb.id === id ? { ...nb, ...patch } : nb));
   const deleteNb = (id) => {
     if (!confirm('Delete this notebook and all its pages?')) return;
-    setNotebooks(nbs => nbs.filter(nb => nb.id !== id));
+    const idx = notebooks.findIndex(nb => nb.id === id);
+    const nb = notebooks[idx];
+    setNotebooks(nbs => nbs.filter(n => n.id !== id));
+    showToast?.(`Deleted "${nb?.name || 'notebook'}"`, {
+      type: 'success',
+      action: { label: 'Undo', onClick: () => setNotebooks(nbs => [...nbs.slice(0, idx), nb, ...nbs.slice(idx)]) },
+    });
   };
 
   const updatePage = (patch) => {
@@ -172,7 +266,10 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
     setShareBusy(true);
     try {
       const expiresAt = makePublic ? computeExpiry(expiryOpt) : null;
-      const token = await setPagePublic(activePage.id, makePublic, { expiresAt, hideTags });
+      // Pass the page content so sharing rewrites it plaintext (or back to
+      // ciphertext) in the same call — the public link works immediately
+      // instead of serving encrypted blobs until the next debounced save.
+      const token = await setPagePublic(activePage.id, makePublic, activePage, { expiresAt, hideTags });
       setPageShareState(activeNb.id, activePage.id, {
         isPublic: makePublic,
         publicToken: makePublic ? token : activePage.publicToken,
@@ -182,7 +279,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
       // Collapse a concrete expiry choice to "keep" so re-edits don't re-extend it.
       if (makePublic && expiresAt) setShareExpiry('keep');
     } catch (err) {
-      alert('Could not update sharing: ' + err.message);
+      showToast?.('Could not update sharing: ' + err.message, { type: 'error', duration: 4000 });
     } finally {
       setShareBusy(false);
     }
@@ -225,18 +322,55 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   };
 
   const deletePage = (nbId, pageId) => {
-    setNotebooks(nbs => nbs.map(nb => nb.id === nbId ? { ...nb, pages: nb.pages.filter(p => p.id !== pageId) } : nb));
+    const nb = notebooks.find(n => n.id === nbId);
+    const idx = nb ? nb.pages.findIndex(p => p.id === pageId) : -1;
+    if (idx === -1) return;
+    const page = nb.pages[idx];
+    setNotebooks(nbs => nbs.map(n => n.id === nbId ? { ...n, pages: n.pages.filter(p => p.id !== pageId) } : n));
+    showToast?.(`Deleted "${page.title || 'Untitled'}"`, {
+      type: 'success',
+      action: {
+        label: 'Undo',
+        onClick: () => setNotebooks(nbs => nbs.map(n => n.id === nbId
+          ? { ...n, pages: [...n.pages.slice(0, idx), page, ...n.pages.slice(idx)] }
+          : n)),
+      },
+    });
   };
 
   const setPaper = (paper) => updateNb(activeNb.id, { paper });
 
   const headings = useMemo(() => parseHeadings(activePage?.body || ''), [activePage?.body]);
 
-  // Collect all unique tags across all notebooks
-  const allTags = useMemo(() => {
-    const tags = new Set();
-    notebooks.forEach(nb => nb.pages.forEach(p => (p.tags || []).forEach(t => tags.add(t.toLowerCase()))));
-    return Array.from(tags).sort();
+  // pageId -> { tasks, meetings, openTasks } for "linked to tracker" badges
+  // on storyboard cards.
+  const pageLinks = useMemo(() => {
+    const map = {};
+    const entry = (pid) => map[pid] || (map[pid] = { tasks: 0, openTasks: 0, meetings: 0, taskRefs: [], meetingRefs: [] });
+    Object.entries(tasksByDate || {}).forEach(([dateKey, list]) => (list || []).forEach(t => {
+      if (!t.linkedPageId) return;
+      const e = entry(t.linkedPageId);
+      e.tasks += 1;
+      if (!t.done) e.openTasks += 1;
+      e.taskRefs.push({ dateKey, id: t.id, done: !!t.done, title: t.title });
+    }));
+    Object.entries(meetingsByDate || {}).forEach(([dateKey, list]) => (list || []).forEach(m => {
+      if (!m.linkedPageId) return;
+      const e = entry(m.linkedPageId);
+      e.meetings += 1;
+      e.meetingRefs.push({ dateKey, id: m.id, title: m.title, time: m.time });
+    }));
+    return map;
+  }, [tasksByDate, meetingsByDate]);
+
+  // All unique tags across notebooks, plus how many pages use each one.
+  const { allTags, tagCounts } = useMemo(() => {
+    const counts = {};
+    notebooks.forEach(nb => nb.pages.forEach(p => (p.tags || []).forEach(t => {
+      const k = t.toLowerCase();
+      counts[k] = (counts[k] || 0) + 1;
+    })));
+    return { allTags: Object.keys(counts).sort(), tagCounts: counts };
   }, [notebooks]);
 
   const toggleTagFilter = (tag) => {
@@ -259,7 +393,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   return (
     <>
       {/* Sidebar */}
-      <aside className={'nmd-sidebar ' + (mobileTree ? 'm-on' : 'm-off') + (sidebarCollapsed ? ' collapsed' : '')}>
+      <aside className={'nmd-sidebar ' + (mobileTree ? 'm-on' : 'm-off')}>
         <div className="nmd-sidebar-top">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{
@@ -267,13 +401,27 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
               color: 'var(--fg1)', letterSpacing: '-0.01em'
             }}>Notebooks</span>
           </div>
-          <button
-            className="nmd-iconbtn"
-            onClick={() => setCreatingNb(true)}
-            aria-label="New notebook" title="New notebook"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <button
+              className={'nmd-iconbtn nmd-board-toggle' + (boardOpen ? ' active' : '')}
+              onClick={() => { setBoardOpen(v => !v); setMobileTree(false); }}
+              aria-label="Storyboard view" title="Storyboard view"
+              aria-pressed={boardOpen}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <rect x="3" y="4" width="5" height="16" rx="1.2" />
+                <rect x="10" y="4" width="5" height="11" rx="1.2" />
+                <rect x="17" y="4" width="4" height="8" rx="1.2" />
+              </svg>
+            </button>
+            <button
+              className="nmd-iconbtn"
+              onClick={() => setCreatingNb(true)}
+              aria-label="New notebook" title="New notebook"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </div>
         </div>
         <div className="nmd-search">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
@@ -314,7 +462,9 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                             checked={tagFilters.includes(tag)}
                             onChange={() => toggleTagFilter(tag)}
                           />
-                          <span>{tag}</span>
+                          <span className="nmd-tag-dot" style={tagStyle(tag)} />
+                          <span className="nmd-tag-dropdown-name">{tag}</span>
+                          <span className="nmd-tag-count">{tagCounts[tag]}</span>
                         </label>
                       ))}
                     </div>
@@ -328,7 +478,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
           <div className="nmd-tag-filter-bar">
             <span className="nmd-tag-filter-label">Tags:</span>
             {tagFilters.map(tag => (
-              <span key={tag} className="nmd-tag-filter-tag" onClick={() => toggleTagFilter(tag)}>
+              <span key={tag} className="nmd-tag-filter-tag" style={tagStyle(tag)} onClick={() => toggleTagFilter(tag)}>
                 {tag}
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </span>
@@ -468,6 +618,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                                 <span
                                   key={t}
                                   className={'nmd-page-tag clickable' + (tagFilters.includes(t.toLowerCase()) ? ' active' : '')}
+                                  style={tagStyle(t)}
                                   onClick={e => { e.stopPropagation(); toggleTagFilter(t.toLowerCase()); }}
                                 >
                                   {t}
@@ -495,7 +646,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
 
       {/* Main editor area */}
       <main className={'nmd-main ' + (mobileTree ? 'm-off' : 'm-on')} style={{ '--nb-accent': activeNb?.color || '#5167F4' }}>
-        {activeNb && activePage ? (
+        {boardOpen ? (
           <>
             <header className="nmd-header">
               <button
@@ -506,17 +657,42 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m15 6-6 6 6 6" /></svg>
               </button>
-              <button
-                className="nmd-iconbtn nmd-collapse-btn"
-                onClick={() => setSidebarCollapsed(v => !v)}
-                aria-label={sidebarCollapsed ? 'Show notebook list' : 'Hide notebook list'}
-                title={sidebarCollapsed ? 'Show notebook list' : 'Hide notebook list'}
+              <span className="nmd-nb-context"><b>Storyboard</b></span>
+              <span className="nmd-board-hint">Drag cards to reorder pages · drag column headers to reorder notebooks</span>
+              <span style={{ flex: 1 }} />
+              <span
+                className={'nmd-saved' + (syncError ? ' error' : '')}
+                title={syncError || 'Synced to your account'}
               >
-                {sidebarCollapsed ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5h18M3 12h12M3 19h18" /></svg>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m14 6-6 6 6 6" /></svg>
-                )}
+                {syncError ? 'Sync error' : saving ? 'Saving…' : 'Saved'}
+              </span>
+              <button className="nmd-btn" onClick={() => setBoardOpen(false)}>Close</button>
+            </header>
+            {notebooks.length > 0 ? (
+              <NotebookBoard
+                notebooks={notebooks}
+                setNotebooks={setNotebooks}
+                onOpenPage={openPage}
+                onNewPage={newPage}
+                pageLinks={pageLinks}
+                onOpenTracker={onOpenTracker}
+              />
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <EmptyState type="notebooks" onAction={() => { setBoardOpen(false); setCreatingNb(true); setMobileTree(true); }} />
+              </div>
+            )}
+          </>
+        ) : activeNb && activePage ? (
+          <>
+            <header className="nmd-header">
+              <button
+                className="nmd-iconbtn nmd-mobile-back"
+                onClick={() => setMobileTree(true)}
+                aria-label="Back to notebooks"
+                title="Back"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m15 6-6 6 6 6" /></svg>
               </button>
               <span className="nmd-nb-strip" />
               <span className="nmd-nb-context"><b>{activeNb.name}</b></span>
@@ -562,6 +738,19 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                 <button className={view === 'rendered' ? 'active' : ''} onClick={() => setView('rendered')}>Read</button>
                 <button className={view === 'source' ? 'active' : ''} onClick={() => setView('source')}>Edit</button>
               </div>
+              <button
+                className={'nmd-iconbtn nmd-focus-btn' + (focusMode ? ' active' : '')}
+                onClick={() => setFocusMode(v => !v)}
+                aria-pressed={focusMode}
+                aria-label={focusMode ? 'Exit focus mode' : 'Focus mode'}
+                title={focusMode ? 'Exit focus mode (Esc)' : 'Focus mode — hide everything but the page'}
+              >
+                {focusMode ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v5H4M20 15h-5v5M15 4v5h5M4 15h5v5" /></svg>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+                )}
+              </button>
               <HelpIcon tip="Read mode renders your markdown. Edit mode lets you write. Use # for headings, **bold**, *italic*, - for lists." position="bottom" />
             </header>
             <div className="nmd-tags-bar">
@@ -569,6 +758,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                 <span
                   key={tag}
                   className={'nmd-tag clickable' + (tagFilters.includes(tag.toLowerCase()) ? ' active' : '')}
+                  style={tagStyle(tag)}
                   onClick={() => toggleTagFilter(tag.toLowerCase())}
                 >
                   {tag}
@@ -581,18 +771,13 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                   </button>
                 </span>
               ))}
-              <input
-                className="nmd-tag-input"
-                placeholder="+ Add tag"
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && e.target.value.trim()) {
-                    const newTag = e.target.value.trim().toLowerCase();
-                    const existing = activePage.tags || [];
-                    if (!existing.includes(newTag)) {
-                      updatePage({ tags: [...existing, newTag] });
-                    }
-                    e.target.value = '';
-                  }
+              <TagInput
+                allTags={allTags}
+                existing={activePage.tags}
+                onAdd={tag => updatePage({ tags: [...(activePage.tags || []), tag] })}
+                onRemoveLast={() => {
+                  const tags = activePage.tags || [];
+                  if (tags.length) updatePage({ tags: tags.slice(0, -1) });
                 }}
               />
             </div>

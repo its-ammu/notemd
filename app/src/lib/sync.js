@@ -4,6 +4,7 @@ import {
   encryptText, decryptText,
   encryptTags, decryptTags,
   encryptJson, decryptJson,
+  isEncrypted,
 } from './crypto';
 
 // ---------- Hydrate: server rows -> client state shape ----------
@@ -20,6 +21,20 @@ export async function fetchAllData() {
 
   const err = nbsRes.error || pgsRes.error || tsRes.error || msRes.error;
   if (err) throw err;
+
+  // Detect rows still stored as plaintext (written before encryption shipped).
+  // The one-time migration only needs to re-upload when these actually exist —
+  // otherwise it would pointlessly rewrite every row (bumping updated_at) on
+  // each new device/browser. Public pages are plaintext on purpose; skip them.
+  const plain = v => v && !isEncrypted(v);
+  const needsEncryptionMigration =
+    (nbsRes.data || []).some(nb => plain(nb.name)) ||
+    (pgsRes.data || []).some(p => !p.is_public && (
+      plain(p.title) || plain(p.body) || (p.tags || []).some(plain)
+    )) ||
+    (tsRes.data || []).some(t => plain(t.title) ||
+      (Array.isArray(t.subtasks) ? t.subtasks.length > 0 : plain(t.subtasks))) ||
+    (msRes.data || []).some(m => plain(m.title) || plain(m.notes));
 
   // Decrypt content fields on the way in. decryptText/Tags/Json pass plaintext
   // through untouched, so pre-encryption rows and public (plaintext) pages just
@@ -40,11 +55,27 @@ export async function fetchAllData() {
     publicToken: p.public_token || null,
     publicExpiresAt: p.public_expires_at || null,
     publicHideTags: !!p.public_hide_tags,
+    // A public page whose stored content is still ciphertext serves unreadable
+    // blobs to anonymous visitors (pages shared before sharing rewrote content
+    // in-place). Flag it for repair below. Encrypted tags are expected when
+    // "hide tags" is on.
+    needsPublicRewrite: !!p.is_public && (
+      isEncrypted(p.title) || isEncrypted(p.body) ||
+      (!p.public_hide_tags && (p.tags || []).some(isEncrypted))
+    ),
   })));
+
+  // Self-heal stale shared pages: rewrite their content plaintext so the public
+  // link works. Fire-and-forget — hydration shouldn't block on it.
+  const stale = pageRows.filter(p => p.needsPublicRewrite);
+  if (stale.length) {
+    Promise.all(stale.map(p => writePageContent(p.id, p, true, p.publicHideTags)))
+      .catch(e => console.warn('[NoteMD] Could not repair shared page content', e));
+  }
 
   const pagesByNb = new Map();
   pageRows.forEach(p => {
-    const { notebookId, ...page } = p;
+    const { notebookId, needsPublicRewrite: _stripped, ...page } = p;
     const list = pagesByNb.get(notebookId) || [];
     list.push(page);
     pagesByNb.set(notebookId, list);
@@ -84,6 +115,8 @@ export async function fetchAllData() {
     repeat: m.repeat,
     notes: await decryptText(key, m.notes || ''),
     linkedPageId: m.linked_page_id || null,
+    skipDates: Array.isArray(m.skip_dates) ? m.skip_dates : [],
+    endDate: m.end_date || null,
   })));
 
   const meetingsByDate = {};
@@ -92,7 +125,7 @@ export async function fetchAllData() {
     (meetingsByDate[day] || (meetingsByDate[day] = [])).push(meeting);
   });
 
-  return { notebooks, tasksByDate, meetingsByDate };
+  return { notebooks, tasksByDate, meetingsByDate, needsEncryptionMigration };
 }
 
 // ---------- Flatten client state -> rows ----------
@@ -115,6 +148,9 @@ async function flattenPages(key, notebooks, userId) {
       // Public pages are stored plaintext so get_public_page can serve them to
       // anonymous visitors. Toggling sharing changes p.isPublic, which re-flows
       // through here on the next push and rewrites the content accordingly.
+      // Tags stay encrypted when "hide tags" is on, so anonymous readers can't
+      // see them even if the RPC returns the column (getPublicPage filters
+      // ciphertext); the owner still reads them via the normal decrypt path.
       const plain = !!p.isPublic;
       rows.push((async () => ({
         id: p.id,
@@ -122,7 +158,7 @@ async function flattenPages(key, notebooks, userId) {
         notebook_id: nb.id,
         title: plain ? (p.title || '') : await encryptText(key, p.title || ''),
         body: plain ? (p.body || '') : await encryptText(key, p.body || ''),
-        tags: await encryptTags(key, p.tags, plain),
+        tags: await encryptTags(key, p.tags, plain && !p.publicHideTags),
         position: i,
       }))());
     });
@@ -164,6 +200,8 @@ async function flattenMeetings(key, meetingsByDate, userId) {
         repeat: m.repeat || 'none',
         notes: await encryptText(key, m.notes || ''),
         linked_page_id: m.linkedPageId || null,
+        skip_dates: m.skipDates || [],
+        end_date: m.endDate || null,
       }))());
     });
   });
@@ -234,10 +272,15 @@ export async function fetchPomoSessions() {
 }
 
 export async function insertPomoSession(userId, taskId, taskTitle, durationMins = 25) {
+  // Task titles are encrypted in the tasks table; leaving the copy here in
+  // plaintext would leak them anyway. Nothing reads this column back today
+  // (fetchPomoSessions selects only task_id/duration_mins), and decryptText
+  // handles both forms if it ever does.
+  const key = await ensureKey();
   const { error } = await supabase.from('pomo_sessions').insert({
     user_id: userId,
     task_id: taskId || null,
-    task_title: taskTitle || null,
+    task_title: taskTitle ? await encryptText(key, taskTitle) : null,
     duration_mins: durationMins,
     session_type: 'work',
   });
@@ -246,10 +289,28 @@ export async function insertPomoSession(userId, taskId, taskTitle, durationMins 
 
 // ---------- Public sharing ----------
 
+// Rewrite a page's stored content so it matches its visibility: plaintext while
+// public (anonymous visitors have no key), ciphertext otherwise. Called directly
+// when sharing is toggled — waiting for the debounced sync left a window where
+// the public link served `v1:...` blobs (and could serve them forever if the tab
+// closed before the save fired).
+async function writePageContent(pageId, page, plain, hideTags) {
+  const key = await ensureKey();
+  const row = {
+    title: plain ? (page.title || '') : await encryptText(key, page.title || ''),
+    body: plain ? (page.body || '') : await encryptText(key, page.body || ''),
+    tags: await encryptTags(key, page.tags, plain && !hideTags),
+  };
+  const { error } = await supabase.from('pages').update(row).eq('id', pageId);
+  if (error) throw error;
+}
+
 // Toggle a page's public visibility. When sharing, returns the share token
 // (minted server-side and stable across re-shares); when unsharing, returns null.
+// `page` is the current plaintext page state ({ title, body, tags }) so the
+// stored content can be rewritten in the same call.
 // opts: { expiresAt: ISO string | null, hideTags: boolean }
-export async function setPagePublic(pageId, isPublic, opts = {}) {
+export async function setPagePublic(pageId, isPublic, page, opts = {}) {
   const { data, error } = await supabase.rpc('set_page_public', {
     p_page_id: pageId,
     p_public: isPublic,
@@ -257,22 +318,29 @@ export async function setPagePublic(pageId, isPublic, opts = {}) {
     p_hide_tags: !!opts.hideTags,
   });
   if (error) throw error;
+  await writePageContent(pageId, page, isPublic, !!opts.hideTags);
   return data; // token string or null
 }
 
 // Fetch a publicly-shared page by its token. Works for anonymous visitors.
 // Returns null when the token is unknown or the page is no longer public.
+//
+// Anonymous visitors have no key, so any `v1:` ciphertext that reaches us is
+// unreadable and must never be rendered as-is. Notebook names are *always*
+// stored encrypted (flattenNotebooks has no public exception), and a page
+// shared before the content rewrite existed may still hold encrypted fields.
 export async function getPublicPage(token) {
   const { data, error } = await supabase.rpc('get_public_page', { p_token: token });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return null;
+  const scrub = v => (isEncrypted(v) ? '' : (v || ''));
   return {
-    title: row.title || '',
-    body: row.body || '',
-    tags: Array.isArray(row.tags) ? row.tags : [],
+    title: scrub(row.title),
+    body: scrub(row.body),
+    tags: (Array.isArray(row.tags) ? row.tags : []).filter(t => !isEncrypted(t)),
     updated: row.updated_at ? new Date(row.updated_at).getTime() : null,
-    notebookName: row.notebook_name || '',
+    notebookName: scrub(row.notebook_name),
     notebookColor: row.notebook_color || null,
   };
 }
