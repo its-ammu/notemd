@@ -146,9 +146,6 @@ export default function RadioPane({ radio, onStartFocus, screenRef }) {
         </button>
       </div>
 
-      <div className="nmd-radio-credit">
-        24/7 live streams via YouTube
-      </div>
 
       {dialog && (
         <CustomRadioDialog
