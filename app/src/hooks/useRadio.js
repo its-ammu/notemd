@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStoredState } from './useStoredState';
 
 // 24/7 YouTube live streams (lofi.cafe-style). These play through the
@@ -7,12 +7,19 @@ import { useStoredState } from './useStoredState';
 // Note: 24/7 streams get replaced when channels restart them. If a station
 // starts showing "live stream recording is not available", grab the new id
 // from the channel's /live page (e.g. youtube.com/@LofiGirl/live).
-export const STATIONS = [
+export const BUILT_IN_STATIONS = [
   { id: 'X4VbdwhkE10', name: 'Lofi Beats', sub: 'beats to relax & study to', by: 'lofi girl' },
   { id: 'JD-kMIpDfnY', name: 'Lofi Sleep', sub: 'beats to sleep/chill to', by: 'lofi girl' },
   { id: 'jpGBUBXo9VI', name: 'Chillhop', sub: 'essentials radio · chill beats', by: 'chillhop' },
   { id: '5yx6BWlEVcY', name: 'Jazzy Lofi', sub: 'jazzy & lofi hip hop', by: 'chillhop' },
 ];
+
+/** @deprecated use BUILT_IN_STATIONS */
+export const STATIONS = BUILT_IN_STATIONS;
+
+export function stationVideoId(st) {
+  return st?.videoId || st?.id;
+}
 
 // ---------------------------------------------------------------------------
 // Module-level singleton player.
@@ -162,7 +169,8 @@ function ensurePlayerSingleton() {
 }
 
 export function useRadio({ onError } = {}) {
-  const [stationId, setStationId] = useStoredState('nmd_radio_station', STATIONS[0].id);
+  const [customStations, setCustomStations] = useStoredState('nmd_radio_custom', []);
+  const [stationId, setStationId] = useStoredState('nmd_radio_station', BUILT_IN_STATIONS[0].id);
   const [volume, setVolume] = useStoredState('nmd_radio_volume', 0.7);
   const [playing, setPlaying] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -173,7 +181,22 @@ export function useRadio({ onError } = {}) {
   const watchdog = useRef(null);
   const sleepTimer = useRef(null);
 
-  const station = STATIONS.find(s => s.id === stationId) || STATIONS[0];
+  const stations = useMemo(
+    () => [
+      ...BUILT_IN_STATIONS.map(s => ({ ...s, custom: false })),
+      ...customStations.map(s => ({ ...s, custom: true })),
+    ],
+    [customStations],
+  );
+
+  const station = stations.find(s => s.id === stationId) || stations[0];
+
+  // Drop a saved selection that no longer exists (deleted custom, removed built-in).
+  useEffect(() => {
+    if (stationId && stations.length && !stations.some(s => s.id === stationId)) {
+      setStationId(stations[0].id);
+    }
+  }, [stationId, stations, setStationId]);
 
   // Keep the singleton's bridge pointed at this (the live) hook instance.
   useEffect(() => {
@@ -228,8 +251,8 @@ export function useRadio({ onError } = {}) {
       }
     }, 12000);
     ensurePlayer().then(p => {
-      log('loadVideoById + playVideo:', target.id);
-      p.loadVideoById(target.id);
+      log('loadVideoById + playVideo:', stationVideoId(target));
+      p.loadVideoById(stationVideoId(target));
       p.playVideo();
     }).catch((err) => {
       log('ensurePlayer failed:', err?.message || err);
@@ -253,8 +276,42 @@ export function useRadio({ onError } = {}) {
   const selectStation = (id) => {
     setStationId(id);
     if (playing || connecting) {
-      const st = STATIONS.find(s => s.id === id);
+      const st = stations.find(s => s.id === id);
       if (st) play(st);
+    }
+  };
+
+  const addCustomStation = ({ name, videoId, sub, by }) => {
+    const entry = {
+      id: `c_${crypto.randomUUID()}`,
+      videoId,
+      name,
+      sub,
+      by,
+      custom: true,
+    };
+    setCustomStations(prev => [...prev, entry]);
+    setStationId(entry.id);
+    return entry;
+  };
+
+  const updateCustomStation = (id, patch) => {
+    setCustomStations(prev => prev.map(s => (s.id === id ? { ...s, ...patch } : s)));
+    if (stationId === id && (playing || connecting)) {
+      const st = { ...stations.find(s => s.id === id), ...patch };
+      play(st);
+    }
+  };
+
+  const deleteCustomStation = (id) => {
+    setCustomStations(prev => prev.filter(s => s.id !== id));
+    if (stationId === id) {
+      const fallback = BUILT_IN_STATIONS[0].id;
+      setStationId(fallback);
+      if (playing || connecting) {
+        const st = stations.find(s => s.id === fallback);
+        if (st) play(st);
+      }
     }
   };
 
@@ -278,13 +335,14 @@ export function useRadio({ onError } = {}) {
   }, []);
 
   return {
-    stations: STATIONS,
+    stations,
     station,
     playing,
     connecting,
     volume, setVolume,
     sleepMins, setSleepMinutes,
     play, pause, toggle, selectStation,
+    addCustomStation, updateCustomStation, deleteCustomStation,
     ensurePlayer,
   };
 }

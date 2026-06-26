@@ -27,7 +27,9 @@ NOTEMD_ENC_KEY (random 32 bytes, base64)
   just work — no per-row flag.
 - **Public shared pages are stored plaintext** (they're deliberately public, and
   anonymous visitors have no key). Toggling sharing rewrites that page's content
-  to plaintext / back to ciphertext on the next save.
+  to plaintext / back to ciphertext immediately, in the same call as the toggle.
+  Tags stay encrypted when "hide tags" is on, so they can't leak to anonymous
+  readers; the public viewer also filters out any `v1:` ciphertext defensively.
 
 ## One-time setup
 
@@ -98,8 +100,8 @@ To point the app at a non-Supabase key source, change the one fetch in
 - The key is app-wide: anyone who obtains it (you/operator, or via the live DB)
   can decrypt everything. RLS still scopes each user to their own rows; the key is
   not a second line of defense if RLS is misconfigured. (Accepted trade-off.)
-- Right after sharing a page there's a sub-second window where the public link may
-  return ciphertext until the debounced save rewrites it plaintext.
+- Pages shared before sharing rewrote content in-place may still hold ciphertext
+  while public; `fetchAllData` detects and repairs them on the owner's next load.
 - Rotating the key (vs. moving it) requires decrypting every row with the old key
   and re-encrypting with the new one. The `v1:` prefix leaves room for a future
   `v2:` to tell old blobs from new during such a pass.

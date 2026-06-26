@@ -628,6 +628,92 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 /* CodeMirror editor styling */
 .nmd-cm-editor .cm-editor { height: 100%; }
 
+/* Markdown toolbar */
+.nmd-md-wrap { background: var(--bg-raised); }
+.nmd-md-toolbar {
+  display: flex; align-items: center; gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+  flex-wrap: wrap;
+}
+.nmd-md-tb-spacer { flex: 1; }
+.nmd-md-tb-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
+
+/* Code-block language menu */
+.nmd-md-tb-codeblock { position: relative; display: inline-flex; }
+.nmd-md-menu-backdrop { position: fixed; inset: 0; z-index: 40; }
+.nmd-md-menu {
+  position: absolute; top: 32px; left: 0; z-index: 41;
+  min-width: 150px; max-height: 280px; overflow-y: auto;
+  padding: 4px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg, 0 8px 30px rgba(0,0,0,0.18));
+}
+.nmd-md-menu-item {
+  display: block; width: 100%; text-align: left;
+  padding: 6px 10px; border: none; border-radius: var(--radius-sm);
+  background: transparent; color: var(--fg2);
+  font-size: 13px; cursor: pointer;
+}
+.nmd-md-menu-item:hover { background: var(--bg-hover); color: var(--fg1); }
+
+/* Fold gutter (heading folding) */
+.nmd-cm-editor .cm-foldGutter { color: var(--fg4); }
+.nmd-cm-editor .cm-foldGutter .cm-gutterElement { padding: 0 2px; cursor: pointer; }
+.nmd-cm-editor .cm-foldGutter .cm-gutterElement:hover { color: var(--fg1); }
+.nmd-cm-editor .cm-foldPlaceholder {
+  background: var(--bg-hover); border: 1px solid var(--border);
+  color: var(--fg3); border-radius: var(--radius-sm);
+  padding: 0 6px; margin: 0 4px;
+}
+.nmd-md-tb-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 28px; padding: 0 6px;
+  border: none; border-radius: var(--radius-sm);
+  background: transparent; color: var(--fg2);
+  font-size: 14px; line-height: 1; cursor: pointer;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+.nmd-md-tb-btn:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-md-tb-btn.active { background: var(--bg-hover); color: var(--fg1); }
+.nmd-md-tb-close { color: var(--fg4); }
+.nmd-md-toolbar-show {
+  align-self: flex-start;
+  margin: 2px 0 0 8px;
+  width: 28px; height: 22px;
+  border: none; border-radius: var(--radius-sm);
+  background: transparent; color: var(--fg4);
+  cursor: pointer; font-size: 14px; line-height: 1;
+}
+.nmd-md-toolbar-show:hover { background: var(--bg-hover); color: var(--fg2); }
+
+/* Inline page references (rendered preview) */
+.nmd-page-ref {
+  color: var(--accent-purple); text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-purple) 35%, transparent);
+  cursor: pointer;
+}
+.nmd-page-ref:hover { border-bottom-color: var(--accent-purple); }
+.nmd-page-ref.disabled { color: var(--fg3); border-bottom: none; cursor: default; }
+
+/* Autocomplete (@page) popup — match app theme */
+.cm-tooltip.cm-tooltip-autocomplete {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg, 0 8px 30px rgba(0,0,0,0.18));
+  overflow: hidden;
+}
+.cm-tooltip-autocomplete > ul { font-family: var(--font-sans, inherit); font-size: 13px; max-height: 260px; }
+.cm-tooltip-autocomplete > ul > li {
+  padding: 5px 10px; color: var(--fg2); display: flex; align-items: baseline; gap: 6px;
+}
+.cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--bg-hover); color: var(--fg1); }
+.cm-completionDetail { color: var(--fg4); font-style: normal; font-size: 11px; margin-left: auto; }
+
 /* Custom search panel */
 .nmd-search-panel {
   display: flex;
@@ -752,7 +838,7 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 }
 .nmd-pane-write textarea::placeholder { color: var(--fg4); }
 
-.nmd-rendered { max-width: var(--content-max); }
+.nmd-rendered { max-width: none; }
 .nmd-rendered > :first-child { margin-top: 0; }
 .nmd-rendered h1,
 .nmd-rendered h2,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import FixedContextMenu from './FixedContextMenu';
 import { relTime } from '../utils/time';
 import { tagStyle } from '../utils/tags';
 
@@ -278,9 +279,10 @@ export default function NotebookBoard({ notebooks, setNotebooks, onOpenPage, onN
       {drag?.type === 'nb' && nbOver === notebooks.length && <div className="nmd-board-collane" />}
 
       {linkMenu && (
-        <div
+        <FixedContextMenu
           className="nmd-menu nmd-board-linkmenu"
-          style={{ left: linkMenu.x, top: linkMenu.y }}
+          x={linkMenu.x}
+          y={linkMenu.y}
           onClick={e => e.stopPropagation()}
         >
           <div className="nmd-menu-label">
@@ -302,7 +304,7 @@ export default function NotebookBoard({ notebooks, setNotebooks, onOpenPage, onN
               </span>
             </button>
           ))}
-        </div>
+        </FixedContextMenu>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { setPagePublic } from '../lib/sync';
 import { tagStyle } from '../utils/tags';
 import EmptyState from './EmptyState';
 import NotebookBoard from './NotebookBoard';
+import FixedContextMenu from './FixedContextMenu';
 import { HelpIcon } from './Tooltip';
 
 // Long-press handlers for mobile equivalent of right-click.
@@ -196,6 +197,12 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   }, [focusMode]);
 
   const openPage = (nbId, pageId) => { setActiveSel({ nbId, pageId }); setBoardOpen(false); setMobileTree(false); };
+
+  // Navigate to a page by id alone (used by inline `page:` links in the body).
+  const openPageById = (pageId) => {
+    const nb = notebooks.find(n => n.pages.some(p => p.id === pageId));
+    if (nb) openPage(nb.id, pageId);
+  };
 
   const activeNb = notebooks.find(n => n.id === activeSel.nbId) || notebooks[0];
   const activePage = activeNb?.pages.find(p => p.id === activeSel.pageId) || activeNb?.pages[0];
@@ -788,6 +795,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                     value={activePage.body}
                     onChange={body => updatePage({ body })}
                     placeholder="# Start typing..."
+                    notebooks={notebooks}
                   />
                 </div>
               ) : (
@@ -796,7 +804,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                   className={'nmd-pane nmd-pane-preview nmd-paper ' + (activeNb.paper || 'plain')}
                 >
                   {activePage.body.trim() ? (
-                    <MarkdownView source={activePage.body} />
+                    <MarkdownView source={activePage.body} onNavigate={openPageById} />
                   ) : (
                     <div style={{ color: 'var(--fg4)', fontSize: 14, lineHeight: 1.6, maxWidth: 600 }}>
                       <p style={{ fontSize: 15, color: 'var(--fg3)' }}>Empty page.</p>
@@ -936,9 +944,9 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
 
       {/* Context menu */}
       {menuState && (
-        <div
-          className="nmd-menu"
-          style={{ left: menuState.x, top: menuState.y }}
+        <FixedContextMenu
+          x={menuState.x}
+          y={menuState.y}
           onClick={e => e.stopPropagation()}
         >
           {menuState.pageId ? (
@@ -982,7 +990,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
               <button className="danger" onClick={() => { deleteNb(menuState.nbId); setMenuState(null); }}>Delete notebook</button>
             </>
           )}
-        </div>
+        </FixedContextMenu>
       )}
     </>
   );

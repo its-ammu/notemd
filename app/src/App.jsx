@@ -348,7 +348,7 @@ function App() {
 
       {showSettings && (
         <div className="nmd-modal-backdrop" onClick={() => setShowSettings(false)}>
-          <div className="nmd-modal" onClick={e => e.stopPropagation()}>
+          <div className="nmd-modal nmd-modal-settings" onClick={e => e.stopPropagation()}>
             <div className="nmd-modal-header">
               <h2>Settings & data</h2>
               <button className="nmd-iconbtn" onClick={() => setShowSettings(false)}>
@@ -363,37 +363,45 @@ function App() {
                 </div>
                 <button className="nmd-btn" onClick={handleSignOut}>Sign out</button>
               </div>
-              <div className="nmd-modal-row">
-                <div className="nmd-modal-row-text">
-                  <div className="nmd-modal-row-title">Display name</div>
-                  <div className="nmd-modal-row-desc">Shown on your home screen greeting.</div>
-                </div>
-                <input
-                  className="nmd-modal-input"
-                  type="text"
-                  value={profile?.display_name || ''}
-                  onChange={e => updateProfile({ display_name: e.target.value })}
-                  placeholder="Your name"
-                />
+              <div className="nmd-modal-row nmd-modal-row-field">
+                <label className="nmd-field" htmlFor="nmd-display-name">
+                  <span className="nmd-field-label">Display name</span>
+                  <span className="nmd-field-hint">Shown on your home screen greeting.</span>
+                  <input
+                    id="nmd-display-name"
+                    className="nmd-field-input"
+                    type="text"
+                    value={profile?.display_name || ''}
+                    onChange={e => updateProfile({ display_name: e.target.value })}
+                    placeholder="Your name"
+                    autoComplete="nickname"
+                  />
+                </label>
               </div>
-              <div className="nmd-modal-row">
-                <div className="nmd-modal-row-text">
-                  <div className="nmd-modal-row-title">Default view</div>
-                  <div className="nmd-modal-row-desc">Which tab opens when you launch the app.</div>
+              <div className="nmd-modal-row nmd-modal-row-field">
+                <div className="nmd-field">
+                  <span className="nmd-field-label">Default view</span>
+                  <span className="nmd-field-hint">Which tab opens when you launch the app.</span>
+                  <div className="nmd-segmented" role="group" aria-label="Default view">
+                    {[
+                      { value: 'home', label: 'Home' },
+                      { value: 'notebooks', label: 'Notebooks' },
+                      { value: 'tracker', label: 'Tracker' },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={'nmd-segmented-btn' + ((prefs.defaultView || 'home') === opt.value ? ' active' : '')}
+                        onClick={() => {
+                          updateProfile({ preferences: { defaultView: opt.value } });
+                          setTab(opt.value);
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <select
-                  className="nmd-modal-input"
-                  value={prefs.defaultView || 'home'}
-                  onChange={e => {
-                    const v = e.target.value;
-                    updateProfile({ preferences: { defaultView: v } });
-                    setTab(v);
-                  }}
-                >
-                  <option value="home">Home</option>
-                  <option value="notebooks">Notebooks</option>
-                  <option value="tracker">Weekly tracker</option>
-                </select>
               </div>
               <div className="nmd-modal-row">
                 <div className="nmd-modal-row-text">

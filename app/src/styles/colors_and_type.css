@@ -331,6 +331,13 @@
 .prose blockquote > p { margin: 0; }
 .prose blockquote > p + p { margin-top: var(--space-2); }
 
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  margin: var(--space-4) 0;
+}
+
 .prose hr, .hr {
   border: none;
   border-top: 1px solid var(--border);

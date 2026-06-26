@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DoodleBoombox, DoodleMoon, DoodleNote, DoodleSquiggle } from './Doodles';
+import CustomRadioDialog from './CustomRadioDialog';
 
 // Sleep timer cycles Off -> 15 -> 30 -> 60 -> Off.
 function nextSleepStep(mins) {
@@ -14,9 +15,27 @@ export default function RadioPane({ radio, onStartFocus, screenRef }) {
     stations, station, playing, connecting,
     volume, setVolume, sleepMins, setSleepMinutes,
     toggle, selectStation,
+    addCustomStation, updateCustomStation, deleteCustomStation,
   } = radio;
 
+  const [dialog, setDialog] = useState(null); // null | { mode: 'add' } | { mode: 'edit', station }
+
   const status = connecting ? 'tuning in…' : playing ? 'on air' : 'paused';
+
+  const handleSave = (data) => {
+    if (dialog?.mode === 'edit') {
+      updateCustomStation(dialog.station.id, data);
+    } else {
+      const entry = addCustomStation(data);
+      if (playing || connecting) selectStation(entry.id);
+    }
+  };
+
+  const handleDelete = (s, e) => {
+    e.stopPropagation();
+    if (!confirm(`Remove "${s.name}" from your custom radios?`)) return;
+    deleteCustomStation(s.id);
+  };
 
   return (
     <div className="nmd-radio">
@@ -77,24 +96,67 @@ export default function RadioPane({ radio, onStartFocus, screenRef }) {
           {stations.map((s, i) => {
             const active = s.id === station.id;
             return (
-              <button
+              <div
                 key={s.id}
-                className={'nmd-radio-poster p' + i + (active ? ' active' : '')}
-                onClick={() => selectStation(s.id)}
+                className={'nmd-radio-poster-wrap' + (s.custom ? ' custom' : '')}
               >
-                <span className="nmd-radio-poster-name">{s.name}</span>
-                {active && <DoodleSquiggle width={84} className="nmd-radio-poster-sq" />}
-                <span className="nmd-radio-poster-sub">{s.sub}</span>
-                <span className="nmd-radio-poster-by">{s.by}</span>
-              </button>
+                <button
+                  type="button"
+                  className={'nmd-radio-poster p' + (i % 6) + (active ? ' active' : '') + (s.custom ? ' custom' : '')}
+                  onClick={() => selectStation(s.id)}
+                >
+                  <span className="nmd-radio-poster-name">{s.name}</span>
+                  {active && <DoodleSquiggle width={84} className="nmd-radio-poster-sq" />}
+                  <span className="nmd-radio-poster-sub">{s.sub}</span>
+                  <span className="nmd-radio-poster-by">{s.by}</span>
+                </button>
+                {s.custom && (
+                  <div className="nmd-radio-poster-actions">
+                    <button
+                      type="button"
+                      className="nmd-radio-poster-act"
+                      title="Edit"
+                      aria-label={`Edit ${s.name}`}
+                      onClick={(e) => { e.stopPropagation(); setDialog({ mode: 'edit', station: s }); }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="nmd-radio-poster-act danger"
+                      title="Delete"
+                      aria-label={`Delete ${s.name}`}
+                      onClick={(e) => handleDelete(s, e)}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                    </button>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
+        <button
+          type="button"
+          className="nmd-radio-add-btn"
+          onClick={() => setDialog({ mode: 'add' })}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          Custom radio
+        </button>
       </div>
 
       <div className="nmd-radio-credit">
-        24/7 live streams via YouTube — the little screen stays visible, that&apos;s the deal
+        24/7 live streams via YouTube
       </div>
+
+      {dialog && (
+        <CustomRadioDialog
+          station={dialog.mode === 'edit' ? dialog.station : null}
+          onSave={handleSave}
+          onClose={() => setDialog(null)}
+        />
+      )}
     </div>
   );
 }

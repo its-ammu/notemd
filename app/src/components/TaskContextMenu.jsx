@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, onClose }) {
@@ -6,6 +6,7 @@ export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, on
   const [workMins, setWorkMins] = useState(25);
   const [breakMins, setBreakMins] = useState(5);
   const ref = useRef(null);
+  const [pos, setPos] = useState({ left: x, top: y });
 
   useEffect(() => {
     const onDown = (e) => { if (!ref.current?.contains(e.target)) onClose(); };
@@ -18,10 +19,16 @@ export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, on
     };
   }, [onClose, step]);
 
-  const menuW = 192;
-  const menuH = step === 'custom' ? 170 : 112;
-  const left = Math.min(x, window.innerWidth - menuW - 8);
-  const top = Math.min(y, window.innerHeight - menuH - 8);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const pad = 8;
+    const { width, height } = el.getBoundingClientRect();
+    setPos({
+      left: Math.max(pad, Math.min(x, window.innerWidth - width - pad)),
+      top: Math.max(pad, Math.min(y, window.innerHeight - height - pad)),
+    });
+  }, [x, y, step]);
 
   const startCustom = () => {
     const w = Math.max(1, Math.min(120, workMins || 25));
@@ -31,7 +38,7 @@ export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, on
   };
 
   return createPortal(
-    <div ref={ref} className="nmd-ctx-menu" style={{ left, top }} onClick={e => e.stopPropagation()}>
+    <div ref={ref} className="nmd-ctx-menu" style={{ left: pos.left, top: pos.top }} onClick={e => e.stopPropagation()}>
       {step === 'menu' ? (
         <>
           <button className="nmd-ctx-item" onClick={(e) => { e.stopPropagation(); onStartPomodoro(25 * 60, 5 * 60); onClose(); }}>
