@@ -539,6 +539,7 @@ const refChips = ViewPlugin.fromClass(
 export default function MarkdownEditor({ value, onChange, placeholder, notebooks = [] }) {
   const containerRef = useRef(null);
   const viewRef = useRef(null);
+  const fileInputRef = useRef(null);
   const isExternalUpdate = useRef(false);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -551,6 +552,16 @@ export default function MarkdownEditor({ value, onChange, placeholder, notebooks
 
   // Run an editor command from a toolbar button, then refocus the editor.
   const run = (cmd) => { const v = viewRef.current; if (v) { cmd(v); v.focus(); } };
+
+  // Toolbar image button → open the file picker, then upload each chosen image.
+  const onPickImage = () => fileInputRef.current?.click();
+  const onImageInputChange = (e) => {
+    const v = viewRef.current;
+    const files = imageFilesFrom(e.target.files || []);
+    if (v) files.forEach((file) => handleImageFile(v, file));
+    e.target.value = ''; // reset so the same file can be picked again
+    v?.focus();
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -687,6 +698,7 @@ export default function MarkdownEditor({ value, onChange, placeholder, notebooks
           <span className="nmd-md-tb-sep" />
           {tbBtn(<TbIcon><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></TbIcon>, 'Link (⌘K)', () => run(insertLink))}
           {tbBtn(<TbIcon><circle cx="12" cy="12" r="4" /><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" /></TbIcon>, 'Link a page (@)', () => run(insertPageMention))}
+          {tbBtn(<TbIcon><rect width="18" height="18" x="3" y="3" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" /></TbIcon>, 'Insert image', onPickImage)}
           <span className="nmd-md-tb-spacer" />
           <button type="button" className="nmd-md-tb-btn nmd-md-tb-close" title="Hide toolbar" onMouseDown={(e) => e.preventDefault()} onClick={() => setToolbarOpen(false)}>
             <TbIcon><path d="M18 6 6 18M6 6l12 12" /></TbIcon>
@@ -699,6 +711,14 @@ export default function MarkdownEditor({ value, onChange, placeholder, notebooks
         </button>
       )}
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={onImageInputChange}
+      />
       <div ref={containerRef} className="nmd-cm-editor" style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }} />
     </div>
   );
