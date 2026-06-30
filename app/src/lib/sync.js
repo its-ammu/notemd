@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { ensureKey } from './encKey';
+import { IMAGE_BUCKET, IMAGE_REF_SCHEME } from './uploadImage';
 import {
   encryptText, decryptText,
   encryptTags, decryptTags,
@@ -345,6 +346,37 @@ export async function getPublicPage(token) {
   };
 }
 
+// Collect the storage paths of every `img:<path>` reference across all page
+// bodies in a notebooks tree. Used to find images no longer referenced anywhere.
+const IMG_REF_RE = new RegExp(`!\\[[^\\]]*\\]\\(${IMAGE_REF_SCHEME}([^)\\s]+)\\)`, 'g');
+function collectImagePaths(notebooks) {
+  const paths = new Set();
+  for (const nb of notebooks || []) {
+    for (const p of nb.pages || []) {
+      const body = p.body || '';
+      let m;
+      IMG_REF_RE.lastIndex = 0;
+      while ((m = IMG_REF_RE.exec(body))) paths.add(m[1]);
+    }
+  }
+  return paths;
+}
+
+// Delete bucket files for images that were referenced before but no longer
+// appear in any page (image removed from a note, or its page/notebook deleted).
+// Best-effort: a storage failure here must never break the data sync, so the
+// caller swallows errors. Only `img:`-scheme refs are managed; legacy full-URL
+// images are left untouched since their paths aren't reliably recoverable.
+async function cleanupOrphanedImages(prev, next) {
+  const prevPaths = collectImagePaths(prev.notebooks);
+  if (prevPaths.size === 0) return;
+  const nextPaths = collectImagePaths(next.notebooks);
+  const orphaned = [...prevPaths].filter((p) => !nextPaths.has(p));
+  if (orphaned.length === 0) return;
+  const { error } = await supabase.storage.from(IMAGE_BUCKET).remove(orphaned);
+  if (error) throw error;
+}
+
 export async function pushChanges(userId, prev, next) {
   const key = await ensureKey();
   const [prevNbs, nextNbs, prevPgs, nextPgs, prevTs, nextTs, prevMs, nextMs] =
@@ -372,4 +404,12 @@ export async function pushChanges(userId, prev, next) {
   await pushTable('notebooks', { upsert: [], remove: nbsDiff.remove });
   await pushTable('tasks',     tsDiff);
   await pushTable('meetings',  msDiff);
+
+  // Best-effort: reclaim bucket storage for images removed from notes. Runs
+  // after the data sync succeeds so a storage hiccup can't lose note content.
+  try {
+    await cleanupOrphanedImages(prev, next);
+  } catch (err) {
+    console.warn('[NoteMD] Image cleanup failed (non-fatal):', err);
+  }
 }

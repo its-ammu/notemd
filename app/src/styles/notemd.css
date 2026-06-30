@@ -660,7 +660,12 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 }
 .nmd-md-menu-item:hover { background: var(--bg-hover); color: var(--fg1); }
 
-/* Fold gutter (heading folding) */
+/* Fold gutter (heading folding) — blend into the page, no grey column/border */
+.nmd-cm-editor .cm-gutters {
+  background: transparent;
+  border-right: none;
+  color: var(--fg4);
+}
 .nmd-cm-editor .cm-foldGutter { color: var(--fg4); }
 .nmd-cm-editor .cm-foldGutter .cm-gutterElement { padding: 0 2px; cursor: pointer; }
 .nmd-cm-editor .cm-foldGutter .cm-gutterElement:hover { color: var(--fg1); }
@@ -682,22 +687,94 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 .nmd-md-tb-close { color: var(--fg4); }
 .nmd-md-toolbar-show {
   align-self: flex-start;
-  margin: 2px 0 0 8px;
-  width: 28px; height: 22px;
-  border: none; border-radius: var(--radius-sm);
-  background: transparent; color: var(--fg4);
-  cursor: pointer; font-size: 14px; line-height: 1;
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 4px 0 0 8px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-raised); color: var(--fg3);
+  cursor: pointer; line-height: 1;
+  font-family: var(--font-sans); font-size: 11px; font-weight: 500;
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-sm);
+  transition: background 120ms var(--ease), color 120ms var(--ease), border-color 120ms var(--ease);
 }
-.nmd-md-toolbar-show:hover { background: var(--bg-hover); color: var(--fg2); }
+.nmd-md-toolbar-show svg { width: 14px; height: 14px; opacity: 0.8; }
+.nmd-md-toolbar-show:hover {
+  background: var(--bg-hover);
+  color: var(--fg1);
+  border-color: var(--border-strong);
+}
 
-/* Inline page references (rendered preview) */
+/* Inline page references (rendered preview) — styled as an internal-link pill
+   prefixed with an @ marker so it reads clearly as a link to another page.
+   Scoped under .prose to override the default blue `.prose a` link styling. */
+.prose .nmd-page-ref,
 .nmd-page-ref {
-  color: var(--accent-purple); text-decoration: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--accent-purple) 35%, transparent);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 0 6px 1px;
+  border-radius: 4px;
+  color: var(--accent-purple);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--accent-purple) 9%, transparent);
+  border: none;
   cursor: pointer;
+  transition: background 0.12s ease;
 }
-.nmd-page-ref:hover { border-bottom-color: var(--accent-purple); }
-.nmd-page-ref.disabled { color: var(--fg3); border-bottom: none; cursor: default; }
+.prose .nmd-page-ref:hover,
+.nmd-page-ref:hover {
+  border: none;
+  background: color-mix(in srgb, var(--accent-purple) 18%, transparent);
+}
+.nmd-page-ref-at {
+  font-weight: 600;
+  opacity: 0.6;
+}
+.prose .nmd-page-ref.disabled,
+.nmd-page-ref.disabled {
+  color: var(--fg2);
+  background: var(--bg-hover);
+  cursor: default;
+}
+
+/* Inline reference chips inside the source editor (image / page links).
+   Replaces the raw `![alt](url)` / `[Title](page:id)` markdown so the long
+   Supabase URL or page id is never exposed while editing. */
+.nmd-cm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: baseline;
+  padding: 1px 7px 1px 6px;
+  margin: 0 1px;
+  border-radius: 999px;
+  font-family: var(--font-sans, inherit);
+  font-size: 0.85em;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+.nmd-cm-chip svg { flex: none; opacity: 0.85; }
+.nmd-cm-chip-page {
+  color: var(--accent-purple);
+  background: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
+}
+.nmd-cm-chip-img {
+  color: var(--fg2);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+}
+.nmd-cm-chip-thumb {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  object-fit: cover;
+  margin-left: -2px;
+}
 
 /* Autocomplete (@page) popup — match app theme */
 .cm-tooltip.cm-tooltip-autocomplete {

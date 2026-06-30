@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { DoodleBoombox, DoodleMoon, DoodleNote, DoodleSquiggle } from './Doodles';
+import { DoodleBoombox, DoodleMoon, DoodleNote } from './Doodles';
 import CustomRadioDialog from './CustomRadioDialog';
+import cassetteImg from '../assets/cassette.png';
 
 // Sleep timer cycles Off -> 15 -> 30 -> 60 -> Off.
 function nextSleepStep(mins) {
@@ -92,58 +93,66 @@ export default function RadioPane({ radio, onStartFocus, screenRef }) {
           </button>
         </div>
 
-        <div className="nmd-radio-wall">
-          {stations.map((s, i) => {
-            const active = s.id === station.id;
-            return (
-              <div
-                key={s.id}
-                className={'nmd-radio-poster-wrap' + (s.custom ? ' custom' : '')}
-              >
-                <button
-                  type="button"
-                  className={'nmd-radio-poster p' + (i % 6) + (active ? ' active' : '') + (s.custom ? ' custom' : '')}
-                  onClick={() => selectStation(s.id)}
+        <div className="nmd-radio-rack">
+          <div className="nmd-radio-rack-label">tapes</div>
+          <div className="nmd-radio-wall">
+            {stations.map((s) => {
+              const active = s.id === station.id;
+              return (
+                <div
+                  key={s.id}
+                  className={'nmd-radio-cassette-wrap' + (s.custom ? ' custom' : '')}
                 >
-                  <span className="nmd-radio-poster-name">{s.name}</span>
-                  {active && <DoodleSquiggle width={84} className="nmd-radio-poster-sq" />}
-                  <span className="nmd-radio-poster-sub">{s.sub}</span>
-                  <span className="nmd-radio-poster-by">{s.by}</span>
-                </button>
-                {s.custom && (
-                  <div className="nmd-radio-poster-actions">
-                    <button
-                      type="button"
-                      className="nmd-radio-poster-act"
-                      title="Edit"
-                      aria-label={`Edit ${s.name}`}
-                      onClick={(e) => { e.stopPropagation(); setDialog({ mode: 'edit', station: s }); }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                    </button>
-                    <button
-                      type="button"
-                      className="nmd-radio-poster-act danger"
-                      title="Delete"
-                      aria-label={`Delete ${s.name}`}
-                      onClick={(e) => handleDelete(s, e)}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  <button
+                    type="button"
+                    className={'nmd-radio-cassette' + (active ? ' active' : '') + (active && playing ? ' playing' : '') + (s.custom ? ' custom' : '')}
+                    onClick={() => selectStation(s.id)}
+                  >
+                    <img className="nmd-radio-cassette-art" src={cassetteImg} alt="" aria-hidden="true" draggable="false" />
+                    <svg className="nmd-radio-cassette-ring" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true">
+                      <path d="M16 13 C80 7 220 8 285 14 C291 60 292 140 286 187 C220 193 80 192 15 186 C9 140 8 60 14 13 Z" />
+                      <path d="M20 9 C90 5 215 6 280 10" opacity="0.5" />
+                    </svg>
+                    <span className="nmd-radio-cassette-label">
+                      <span className="nmd-radio-cassette-name">{s.name}</span>
+                      {s.by && <span className="nmd-radio-cassette-by">{s.by}</span>}
+                    </span>
+                  </button>
+                  {s.custom && (
+                    <div className="nmd-radio-cassette-actions">
+                      <button
+                        type="button"
+                        className="nmd-radio-cassette-act"
+                        title="Edit"
+                        aria-label={`Edit ${s.name}`}
+                        onClick={(e) => { e.stopPropagation(); setDialog({ mode: 'edit', station: s }); }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="nmd-radio-cassette-act danger"
+                        title="Delete"
+                        aria-label={`Delete ${s.name}`}
+                        onClick={(e) => handleDelete(s, e)}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            className="nmd-radio-add-btn"
+            onClick={() => setDialog({ mode: 'add' })}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            Custom radio
+          </button>
         </div>
-        <button
-          type="button"
-          className="nmd-radio-add-btn"
-          onClick={() => setDialog({ mode: 'add' })}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          Custom radio
-        </button>
       </div>
 
 

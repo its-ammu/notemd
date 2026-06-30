@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
 import rehypeSourcePosition from '../utils/rehype-source-position';
+import { IMAGE_REF_SCHEME, resolveImageSrc } from '../lib/uploadImage';
 
 /**
  * MarkdownView — renders markdown with full GFM support (tables,
@@ -12,9 +13,10 @@ import rehypeSourcePosition from '../utils/rehype-source-position';
  */
 const PAGE_SCHEME = 'page:';
 
-/* react-markdown strips unknown URL schemes; keep our in-app page links. */
+/* react-markdown strips unknown URL schemes; keep our in-app page links and
+   opaque image refs (both resolved later in `components`). */
 function pageUrlTransform(url) {
-  if (url.startsWith(PAGE_SCHEME)) return url;
+  if (url.startsWith(PAGE_SCHEME) || url.startsWith(IMAGE_REF_SCHEME)) return url;
   return defaultUrlTransform(url);
 }
 
@@ -27,20 +29,29 @@ function buildComponents(onNavigate) {
       }
       return <input type={type} {...props} />;
     },
+    /* Resolve opaque `img:<path>` refs to a real Supabase URL at render time
+       (legacy full URLs pass through untouched). */
+    img: ({ src, ...props }) => <img src={resolveImageSrc(src)} {...props} />,
     /* Inline page links (`[Title](page:ID)`) navigate within the app rather
        than following an href. Without a navigator (e.g. public pages) they
        render as plain, non-clickable text. */
     a: ({ href, children, ...props }) => {
       if (href && href.startsWith(PAGE_SCHEME)) {
         const pageId = href.slice(PAGE_SCHEME.length);
-        if (!onNavigate) return <span className="nmd-page-ref disabled">{children}</span>;
+        if (!onNavigate) {
+          return (
+            <span className="nmd-page-ref disabled">
+              <span className="nmd-page-ref-at" aria-hidden="true">@</span>{children}
+            </span>
+          );
+        }
         return (
           <a
             className="nmd-page-ref"
             href={href}
             onClick={(e) => { e.preventDefault(); onNavigate(pageId); }}
           >
-            {children}
+            <span className="nmd-page-ref-at" aria-hidden="true">@</span>{children}
           </a>
         );
       }

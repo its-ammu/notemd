@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { EditorState } from '@codemirror/state';
-import { EditorView, keymap, highlightActiveLine } from '@codemirror/view';
+import { EditorState, RangeSetBuilder } from '@codemirror/state';
+import { EditorView, keymap, highlightActiveLine, Decoration, ViewPlugin, WidgetType } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentMore, indentLess } from '@codemirror/commands';
 import { search, openSearchPanel, closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, SearchQuery, setSearchQuery, getSearchQuery } from '@codemirror/search';
 import { markdown, markdownLanguage, insertNewlineContinueMarkup, deleteMarkupBackward, pasteURLAsLink } from '@codemirror/lang-markdown';
@@ -8,7 +8,7 @@ import { autocompletion, startCompletion, completionKeymap } from '@codemirror/a
 import { languages } from '@codemirror/language-data';
 import { syntaxHighlighting, HighlightStyle, indentUnit, foldGutter, foldService, codeFolding, foldKeymap } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
-import { uploadImage } from '../lib/uploadImage';
+import { uploadImage, resolveImageSrc } from '../lib/uploadImage';
 
 /* Custom highlight style matching NoteMD's design tokens. */
 const mdHighlight = HighlightStyle.define([
@@ -436,6 +436,106 @@ const listBackspace = (view) => { const ok = deleteMarkupBackward(view); if (ok)
 const listIndent = (view) => { const ok = indentMore(view); if (ok) renumberKeepingCursor(view); return ok; };
 const listOutdent = (view) => { const ok = indentLess(view); if (ok) renumberKeepingCursor(view); return ok; };
 
+/* ── Inline reference chips ──────────────────────────────────────────────
+   Image markdown (`![alt](url)`) and page links (`[Title](page:id)`) are
+   replaced in the editor with compact styled chips so the long Supabase URL /
+   page id never clutters the source. The raw markdown is revealed again the
+   moment the cursor (or selection) touches the range, so editing still works. */
+
+class PageRefChip extends WidgetType {
+  constructor(title) { super(); this.title = title; }
+  eq(other) { return other.title === this.title; }
+  toDOM() {
+    const el = document.createElement('span');
+    el.className = 'nmd-cm-chip nmd-cm-chip-page';
+    el.innerHTML =
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>';
+    el.appendChild(document.createTextNode(this.title || 'Untitled'));
+    return el;
+  }
+  ignoreEvent() { return false; }
+}
+
+class ImageRefChip extends WidgetType {
+  constructor(alt, url) { super(); this.alt = alt; this.url = url; }
+  eq(other) { return other.alt === this.alt && other.url === this.url; }
+  toDOM() {
+    const el = document.createElement('span');
+    el.className = 'nmd-cm-chip nmd-cm-chip-img';
+    if (this.url && !this.url.startsWith('uploading-')) {
+      const thumb = document.createElement('img');
+      thumb.className = 'nmd-cm-chip-thumb';
+      thumb.src = resolveImageSrc(this.url);
+      thumb.alt = '';
+      el.appendChild(thumb);
+    } else {
+      el.insertAdjacentHTML('beforeend',
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>');
+    }
+    el.appendChild(document.createTextNode(this.alt || 'image'));
+    return el;
+  }
+  ignoreEvent() { return false; }
+}
+
+// `![alt](url)` images and `[title](page:id)` references, on a single line.
+const REF_RE = /(!?)\[([^\]]*)\]\(([^)\s]+)\)/g;
+
+/* Does a selection *strictly* overlap [from, to]? A collapsed cursor sitting at
+   either edge does NOT count — otherwise clicking the line an image lives on
+   would re-expose the URL. Only a real selection dragged across the chip (an
+   intentional "I want to edit this") reveals the raw markdown. Deleting a chip
+   still works via atomicRanges (backspace removes the whole range). */
+function selectionTouches(state, from, to) {
+  for (const r of state.selection.ranges) {
+    if (r.from < to && r.to > from) return true;
+  }
+  return false;
+}
+
+function buildRefDecorations(view) {
+  const builder = new RangeSetBuilder();
+  for (const { from, to } of view.visibleRanges) {
+    let pos = from;
+    while (pos <= to) {
+      const line = view.state.doc.lineAt(pos);
+      REF_RE.lastIndex = 0;
+      let m;
+      while ((m = REF_RE.exec(line.text))) {
+        const isImage = m[1] === '!';
+        const url = m[3];
+        const isPage = url.startsWith('page:');
+        if (!isImage && !isPage) continue; // leave ordinary links as plain markdown
+        const start = line.from + m.index;
+        const end = start + m[0].length;
+        if (selectionTouches(view.state, start, end)) continue; // editing — show raw
+        const widget = isImage
+          ? new ImageRefChip(m[2], url)
+          : new PageRefChip(m[2]);
+        builder.add(start, end, Decoration.replace({ widget }));
+      }
+      pos = line.to + 1;
+    }
+  }
+  return builder.finish();
+}
+
+const refChips = ViewPlugin.fromClass(
+  class {
+    constructor(view) { this.decorations = buildRefDecorations(view); }
+    update(update) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = buildRefDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: (v) => v.decorations,
+    provide: (plugin) =>
+      EditorView.atomicRanges.of((view) => view.plugin(plugin)?.decorations || Decoration.none),
+  }
+);
+
 export default function MarkdownEditor({ value, onChange, placeholder, notebooks = [] }) {
   const containerRef = useRef(null);
   const viewRef = useRef(null);
@@ -490,6 +590,7 @@ export default function MarkdownEditor({ value, onChange, placeholder, notebooks
         headingFold, // fold a heading and everything under it
         indentUnit.of('    '), // 4 spaces — enough for nested lists to render as nested
         syntaxHighlighting(mdHighlight),
+        refChips, // render image/page-link markdown as compact styled chips
         mdTheme,
         updateListener,
         EditorView.lineWrapping,
@@ -593,7 +694,8 @@ export default function MarkdownEditor({ value, onChange, placeholder, notebooks
         </div>
       ) : (
         <button type="button" className="nmd-md-toolbar-show" title="Show formatting toolbar" onClick={() => setToolbarOpen(true)}>
-          <TbIcon><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></TbIcon>
+          <TbIcon><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></TbIcon>
+          <span>Formatting</span>
         </button>
       )}
 

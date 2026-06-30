@@ -119,7 +119,12 @@ function ensurePlayerSingleton() {
         reject(new Error('player init timeout'));
       }, 15000);
       const p = new YT.Player(el, {
-        host: 'https://www.youtube-nocookie.com', // privacy-enhanced mode — avoids Safari ITP cookie blocking (Error 153)
+        // host must match where the IFrame API itself is served (www.youtube.com).
+        // The nocookie host has no /iframe_api endpoint, so the API ends up
+        // posting commands to an origin the player frame never adopts →
+        // "Unable to post message … Recipient has origin <page>" and playback
+        // never starts.
+        host: 'https://www.youtube.com',
         width: '100%',
         height: '100%',
         playerVars: {

@@ -2082,17 +2082,65 @@ textarea.nmd-mtg-input {
   color: var(--fg2);
   padding: 28px 24px 48px;
 }
-/* margin: auto vertically centers when there's room, scrolls when not */
+/* margin: auto vertically centers when there's room, scrolls when not.
+   Base (narrow): player and rack stacked. Wide screens switch to a centered
+   side-by-side pair (see the min-width rule below). */
 .nmd-radio-stage {
   position: relative;
-  width: 100%; max-width: 900px;
+  width: 100%; max-width: 1040px;
   margin: auto;
-  display: flex; flex-direction: column; align-items: center;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 28px;
 }
 .nmd-radio-center {
   display: flex; flex-direction: column; align-items: center;
   gap: 12px;
   width: 100%;
+}
+
+/* Cassette rack */
+.nmd-radio-rack {
+  display: flex; flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  align-items: center;
+}
+.nmd-radio-rack-label {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--fg4);
+  text-align: center;
+}
+
+/* Wide: player + rack as a compact, centered pair */
+@media (min-width: 960px) {
+  .nmd-radio-stage {
+    flex-direction: row;
+    align-items: center; justify-content: center;
+    gap: 56px;
+  }
+  .nmd-radio-center { flex: 0 0 auto; width: 420px; }
+  .nmd-radio-rack {
+    flex: 0 0 252px;
+    width: 252px;
+    align-items: stretch;
+    align-self: center;
+    max-height: min(580px, calc(100vh - 96px));
+  }
+  .nmd-radio-rack-label { text-align: left; padding-left: 2px; flex: none; }
+  /* only the tapes scroll; label + add button stay put */
+  .nmd-radio-wall {
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 8px 4px 8px; /* room for hover shift + scrollbar */
+    margin: -4px -4px 0 -8px;
+  }
+  .nmd-radio-cassette-wrap { width: 100%; flex: none; }
+  .nmd-radio-add-btn { align-self: stretch; flex: none; }
 }
 /* In-flow slot the fixed video dock aligns itself to */
 .nmd-radio-screen {
@@ -2198,37 +2246,32 @@ textarea.nmd-mtg-input {
 }
 .nmd-radio-focus:hover { color: var(--fg1); background: var(--bg-hover); }
 
-/* Poster row — station cards + custom add */
+/* Cassette rack — tapes wrap in rows when stacked, column when beside player */
 .nmd-radio-wall {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: stretch;
-  gap: 12px;
-  margin-top: 28px;
+  gap: 10px;
   width: 100%;
 }
-.nmd-radio-poster-wrap {
+.nmd-radio-cassette-wrap {
   position: relative;
-  width: 148px;
-  flex: 0 0 148px;
+  width: 210px;
+  flex: 0 0 210px;
 }
-.nmd-radio-poster-wrap.custom:hover .nmd-radio-poster-actions { opacity: 1; }
-.nmd-radio-poster-wrap .nmd-radio-poster {
-  width: 100%;
-  height: 100%;
-}
-.nmd-radio-poster-actions {
+.nmd-radio-cassette-wrap.custom:hover .nmd-radio-cassette-actions { opacity: 1; }
+.nmd-radio-cassette-actions {
   position: absolute;
-  top: 6px;
-  right: 4px;
+  top: 8px;
+  right: 8px;
   display: flex;
   gap: 2px;
   opacity: 0;
   transition: opacity 120ms var(--ease);
   z-index: 3;
 }
-.nmd-radio-poster-act {
+.nmd-radio-cassette-act {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2242,30 +2285,38 @@ textarea.nmd-mtg-input {
   cursor: pointer;
   box-shadow: var(--shadow-sm);
 }
-.nmd-radio-poster-act:hover { background: var(--bg-hover); color: var(--fg1); }
-.nmd-radio-poster-act.danger:hover { color: var(--danger); }
+.nmd-radio-cassette-act:hover {
+  /* tint layered over a solid surface so the icon stays legible over the art */
+  background: linear-gradient(var(--bg-hover), var(--bg-hover)), var(--paper-raised);
+  border-color: var(--border-strong);
+  color: var(--fg1);
+}
+.nmd-radio-cassette-act.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
 .nmd-radio-add-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  margin-top: 14px;
-  padding: 6px 11px;
-  border: 1px solid var(--border);
+  margin-top: 2px;
+  padding: 7px 11px;
+  border: 1px dashed var(--border-strong);
   border-radius: var(--radius-md);
-  background: var(--bg-raised);
+  background: transparent;
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--fg3);
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
   transition: background 120ms var(--ease), color 120ms var(--ease), border-color 120ms var(--ease);
 }
 .nmd-radio-add-btn:hover {
   color: var(--fg1);
   background: var(--bg-hover);
-  border-color: var(--border-strong);
+  border-color: var(--fg3);
 }
 .nmd-radio-add-btn svg { flex-shrink: 0; opacity: 0.75; }
 .nmd-radio-form-error {
@@ -2279,60 +2330,87 @@ textarea.nmd-mtg-input {
   gap: 8px;
   padding-top: 4px;
 }
-.nmd-radio-poster {
+
+/* A single cassette tape — hand-drawn art image fills the card, the station
+   label sits in the blank top panel of the drawing. */
+.nmd-radio-cassette {
   position: relative;
-  width: 148px;
-  flex: 0 0 148px;
-  min-width: 0;
-  padding: 14px 10px 10px;
-  display: flex; flex-direction: column; gap: 3px;
-  text-align: left;
-  background: var(--bg-raised);
-  border: 1.6px solid var(--fg3);
-  /* uneven radii read as hand-cut paper */
-  border-radius: 7px 10px 6px 9px / 9px 6px 10px 7px;
-  box-shadow: var(--shadow-sm);
-  color: var(--fg2);
+  width: 100%;
+  aspect-ratio: 1080 / 720;
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
   cursor: pointer;
-  transition: transform 140ms var(--ease), box-shadow 140ms var(--ease), border-color 140ms var(--ease);
+  transition: transform 140ms var(--ease);
 }
-/* washi-tape strip pinning each poster up */
-.nmd-radio-poster::before {
-  content: "";
+.nmd-radio-cassette-art {
   position: absolute;
-  top: -7px; left: 50%;
-  width: 38px; height: 13px;
-  transform: translateX(-50%) rotate(-3deg);
-  background: var(--accent-tint-strong);
-  border-radius: 2px;
-  opacity: 0.9;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  /* black-ink PNG → soften to ink tone, lighten on dark themes below */
+  opacity: 0.82;
 }
-.nmd-radio-poster.p0 { transform: rotate(-2.5deg); }
-.nmd-radio-poster.p1 { transform: rotate(2deg); }
-.nmd-radio-poster.p2 { transform: rotate(-1.5deg); }
-.nmd-radio-poster.p3 { transform: rotate(2.5deg); }
-.nmd-radio-poster.p4 { transform: rotate(-2deg); }
-.nmd-radio-poster.p5 { transform: rotate(1.5deg); }
-.nmd-radio-poster:hover { transform: rotate(0deg) scale(1.05); box-shadow: var(--shadow-float); z-index: 2; }
-.nmd-radio-poster.active { border-color: var(--accent-blue); color: var(--fg1); }
-.nmd-radio-poster-name {
+[data-theme="dark"] .nmd-radio-cassette-art { filter: invert(1); opacity: 0.7; }
+.nmd-radio-cassette:hover { transform: translateX(-6px) rotate(-0.6deg); }
+.nmd-radio-cassette:hover .nmd-radio-cassette-art { opacity: 1; }
+[data-theme="dark"] .nmd-radio-cassette:hover .nmd-radio-cassette-art { opacity: 0.9; }
+/* active tape: hand-drawn scribble ring + full-strength art */
+.nmd-radio-cassette-ring {
+  position: absolute;
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  fill: none;
+  stroke: var(--accent-blue);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms var(--ease);
+}
+.nmd-radio-cassette.active .nmd-radio-cassette-ring { opacity: 0.9; }
+.nmd-radio-cassette.active .nmd-radio-cassette-art { opacity: 1; }
+
+/* label text floats in the blank top panel of the cassette drawing */
+.nmd-radio-cassette-label {
+  position: absolute;
+  top: 19%;
+  left: 15%;
+  right: 14%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  pointer-events: none;
+}
+.nmd-radio-cassette-name {
+  display: block;
   font-family: var(--font-sans);
-  font-size: 13px; font-weight: 600;
+  font-size: 9px; font-weight: 700;
   color: var(--fg1);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.nmd-radio-poster-sq { margin: -2px 0 1px; }
-.nmd-radio-poster-sub {
-  font-size: 11px;
-  color: var(--fg3);
-  line-height: 1.35;
-}
-.nmd-radio-poster-by {
+.nmd-radio-cassette-by {
+  display: block;
   font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--fg4);
-  letter-spacing: 0.08em;
+  font-size: 6.5px;
+  color: var(--fg3);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-top: 2px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nmd-radio-credit {
@@ -2440,16 +2518,13 @@ textarea.nmd-mtg-input {
     width: 200px;
   }
   .nmd-radio-margin-note { display: none; }
-  .nmd-radio-wall { gap: 8px; }
-  .nmd-radio-poster-wrap,
-  .nmd-radio-poster {
-    width: calc(50% - 4px);
-    flex: 0 0 calc(50% - 4px);
+  /* Two tapes per row on phones; rack is already stacked under the player */
+  .nmd-radio-cassette-wrap {
+    width: calc(50% - 5px);
+    flex: 0 0 calc(50% - 5px);
   }
-  .nmd-radio-poster-name { font-size: 11px; }
-  .nmd-radio-poster-sub { font-size: 9px; line-height: 1.3; }
-  .nmd-radio-poster-by { font-size: 8px; }
-  .nmd-radio-poster-actions { opacity: 1; }
+  .nmd-radio-add-btn { align-self: center; margin-top: 6px; }
+  .nmd-radio-cassette-actions { opacity: 1; }
   .nmd-radio-credit { margin-top: 18px; }
 }
 

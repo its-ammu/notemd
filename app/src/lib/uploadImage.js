@@ -30,9 +30,32 @@ function prettyBytes(n) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Opaque reference scheme stored in markdown in place of the full Supabase URL,
+// e.g. `![alt](img:<userId>/<uuid>.png)`. The real public URL is reconstructed
+// only at display time (see resolveImageSrc / MarkdownView), so the project ref
+// never lives in note content, the editor source, or shared-page payloads.
+export const IMAGE_REF_SCHEME = 'img:';
+
+/* Build the public URL for a stored image path. */
+export function publicUrlForPath(path) {
+  const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+  return data?.publicUrl || '';
+}
+
+/* Turn whatever sits in a markdown image's `src` into a real URL:
+   - `img:<path>`  → resolved Supabase public URL
+   - anything else → returned untouched (legacy full URLs, external images) */
+export function resolveImageSrc(src) {
+  if (typeof src === 'string' && src.startsWith(IMAGE_REF_SCHEME)) {
+    return publicUrlForPath(src.slice(IMAGE_REF_SCHEME.length));
+  }
+  return src;
+}
+
 /**
- * Validate + upload an image file to the page-images bucket and return its
- * public URL. Throws an Error with a user-friendly message on failure.
+ * Validate + upload an image file to the page-images bucket and return an
+ * opaque `img:<path>` reference (not the full URL). Throws an Error with a
+ * user-friendly message on failure.
  */
 export async function uploadImage(file) {
   if (!file) throw new Error('No file provided.');
@@ -63,5 +86,5 @@ export async function uploadImage(file) {
   const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
   if (!data?.publicUrl) throw new Error('Could not resolve image URL after upload.');
 
-  return data.publicUrl;
+  return `${IMAGE_REF_SCHEME}${path}`;
 }
