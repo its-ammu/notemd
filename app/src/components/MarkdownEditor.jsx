@@ -8,7 +8,9 @@ import { autocompletion, startCompletion, completionKeymap } from '@codemirror/a
 import { languages } from '@codemirror/language-data';
 import { syntaxHighlighting, HighlightStyle, indentUnit, foldGutter, foldService, codeFolding, foldKeymap } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
-import { uploadImage, resolveImageSrc } from '../lib/uploadImage';
+import {
+  uploadImage, resolveImageSrc, parseImageRef, imageMaxWidthForSize, IMAGE_SIZES,
+} from '../lib/uploadImage';
 
 /* Custom highlight style matching NoteMD's design tokens. */
 const mdHighlight = HighlightStyle.define([
@@ -456,26 +458,69 @@ class PageRefChip extends WidgetType {
   ignoreEvent() { return false; }
 }
 
-class ImageRefChip extends WidgetType {
-  constructor(alt, url) { super(); this.alt = alt; this.url = url; }
-  eq(other) { return other.alt === this.alt && other.url === this.url; }
-  toDOM() {
-    const el = document.createElement('span');
-    el.className = 'nmd-cm-chip nmd-cm-chip-img';
-    if (this.url && !this.url.startsWith('uploading-')) {
-      const thumb = document.createElement('img');
-      thumb.className = 'nmd-cm-chip-thumb';
-      thumb.src = resolveImageSrc(this.url);
-      thumb.alt = '';
-      el.appendChild(thumb);
-    } else {
-      el.insertAdjacentHTML('beforeend',
-        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>');
+/* Full-image block shown in place of `![alt](img:…)` markdown. Renders the
+   image at its stored display size and exposes a hover toolbar to pick a size;
+   picking rewrites the underlying markdown. Atomic (see refChips.provide), so
+   backspace removes the whole image and the URL stays hidden. */
+class ImageBlock extends WidgetType {
+  constructor(alt, src) { super(); this.alt = alt; this.src = src; }
+  eq(other) { return other.alt === this.alt && other.src === this.src; }
+
+  toDOM(view) {
+    const { size } = parseImageRef(this.src);
+    const wrap = document.createElement('span');
+    wrap.className = 'nmd-cm-imgblock';
+    const maxWidth = imageMaxWidthForSize(size);
+    if (maxWidth) wrap.style.maxWidth = maxWidth;
+
+    if (!this.src || this.src.startsWith('uploading-')) {
+      wrap.classList.add('loading');
+      const box = document.createElement('span');
+      box.className = 'nmd-cm-imgblock-loading';
+      box.textContent = this.alt || 'Uploading…';
+      wrap.appendChild(box);
+      return wrap;
     }
-    el.appendChild(document.createTextNode(this.alt || 'image'));
-    return el;
+
+    const img = document.createElement('img');
+    img.src = resolveImageSrc(this.src);
+    img.alt = this.alt || '';
+    wrap.appendChild(img);
+
+    const bar = document.createElement('span');
+    bar.className = 'nmd-cm-imgbar';
+    for (const z of IMAGE_SIZES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'nmd-cm-imgbar-btn' + ((size || 'lg') === z.id ? ' active' : '');
+      btn.textContent = z.label;
+      // Keep clicks from reaching the editor (no cursor jump / selection).
+      btn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.applySize(view, z.id);
+      });
+      bar.appendChild(btn);
+    }
+    wrap.appendChild(bar);
+    return wrap;
   }
-  ignoreEvent() { return false; }
+
+  /* Rewrite just this image's src in the document to carry the chosen size. */
+  applySize(view, sizeId) {
+    const doc = view.state.doc.toString();
+    const token = `](${this.src})`;
+    const at = doc.indexOf(token);
+    if (at === -1) return; // markdown changed underneath us — nothing to do
+    const { base } = parseImageRef(this.src);
+    const newSrc = sizeId && sizeId !== 'lg' ? `${base}#${sizeId}` : base;
+    const from = at + 2;                  // just after "]("
+    const to = at + token.length - 1;     // just before ")"
+    view.dispatch({ changes: { from, to, insert: newSrc } });
+  }
+
+  ignoreEvent() { return true; } // we handle our own clicks; editor ignores them
 }
 
 // `![alt](url)` images and `[title](page:id)` references, on a single line.
@@ -510,7 +555,7 @@ function buildRefDecorations(view) {
         const end = start + m[0].length;
         if (selectionTouches(view.state, start, end)) continue; // editing — show raw
         const widget = isImage
-          ? new ImageRefChip(m[2], url)
+          ? new ImageBlock(m[2], url)
           : new PageRefChip(m[2]);
         builder.add(start, end, Decoration.replace({ widget }));
       }

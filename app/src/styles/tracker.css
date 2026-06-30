@@ -2218,6 +2218,16 @@ textarea.nmd-mtg-input {
   transition: background 120ms var(--ease), transform 120ms var(--ease);
 }
 .nmd-radio-play:hover { background: var(--bg-hover); transform: rotate(-2deg); }
+.nmd-radio-play.loading { cursor: progress; border-color: var(--fg4); }
+.nmd-radio-play.loading:hover { background: transparent; transform: none; }
+.nmd-radio-spinner {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--fg2) 35%, transparent);
+  border-top-color: var(--fg1);
+  animation: nmd-radio-spin 0.7s linear infinite;
+}
+@keyframes nmd-radio-spin { to { transform: rotate(360deg); } }
 .nmd-radio-vol {
   width: 110px;
   accent-color: var(--accent-blue);

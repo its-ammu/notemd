@@ -13,7 +13,7 @@ function nextSleepStep(mins) {
 
 export default function RadioPane({ radio, onStartFocus, screenRef }) {
   const {
-    stations, station, playing, connecting,
+    stations, station, playing, connecting, playerReady,
     volume, setVolume, sleepMins, setSleepMinutes,
     toggle, selectStation,
     addCustomStation, updateCustomStation, deleteCustomStation,
@@ -21,7 +21,10 @@ export default function RadioPane({ radio, onStartFocus, screenRef }) {
 
   const [dialog, setDialog] = useState(null); // null | { mode: 'add' } | { mode: 'edit', station }
 
-  const status = connecting ? 'tuning in…' : playing ? 'on air' : 'paused';
+  const loading = !playerReady; // YouTube player still warming up
+  const status = connecting
+    ? 'tuning in…'
+    : loading ? 'warming up…' : playing ? 'on air' : 'paused';
 
   const handleSave = (data) => {
     if (dialog?.mode === 'edit') {
@@ -59,11 +62,15 @@ export default function RadioPane({ radio, onStartFocus, screenRef }) {
 
           <div className="nmd-radio-controls">
             <button
-              className="nmd-radio-play"
+              className={'nmd-radio-play' + (loading ? ' loading' : '')}
               onClick={toggle}
-              aria-label={playing || connecting ? 'Pause' : 'Play'}
+              disabled={loading}
+              aria-label={loading ? 'Loading player' : playing || connecting ? 'Pause' : 'Play'}
+              title={loading ? 'Player is loading — hang on…' : undefined}
             >
-              {playing || connecting ? (
+              {loading ? (
+                <span className="nmd-radio-spinner" aria-hidden="true" />
+              ) : playing || connecting ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M9 5.5v13M15 5.5v13" /></svg>
               ) : (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M8.5 5.8 17.5 12 8.5 18.2 Z" /></svg>

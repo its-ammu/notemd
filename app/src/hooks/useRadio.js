@@ -55,6 +55,7 @@ const bridge = {
   volume: 0.7,
   onState: () => {},
   onError: () => {},
+  onReady: () => {},
 };
 
 function loadYouTubeApi() {
@@ -91,6 +92,9 @@ function resetIfDetached() {
 
 function ensurePlayerSingleton() {
   resetIfDetached();
+  // Already have a live, ready player (e.g. a slow init that finished after the
+  // timeout, or a warm pre-mounted one) — use it directly.
+  if (player && playerIsAttached()) return Promise.resolve(player);
   if (!playerPromise) {
     playerPromise = loadYouTubeApi().then(YT => new Promise((resolve, reject) => {
       let el = document.getElementById('nmd-yt-player');
@@ -112,18 +116,27 @@ function ensurePlayerSingleton() {
         el = fresh;
       }
       log('creating player');
+      // Cold first loads fetch the whole www.youtube.com player bundle (several
+      // MB) before onReady — that can take a while on slow/cold-cache networks.
+      // Give it a generous budget, and on timeout DON'T destroy the player: a
+      // late onReady can still resolve `player`, so a slow-but-successful init
+      // isn't thrown away. We only reject so the caller stops waiting; the next
+      // play() reuses the (now warm) player instead of recreating it.
+      let settled = false;
       const readyTimeout = setTimeout(() => {
-        log('onReady never fired (15s) — resetting player for a clean retry');
+        if (settled) return;
+        log('onReady slow (40s) — letting the caller retry; keeping the player to finish warming up');
+        // Allow a future ensurePlayer() to proceed, but DON'T destroy `p`: its
+        // late onReady will still set the module `player`, which the next play()
+        // reuses via the "already ready" shortcut in ensurePlayerSingleton.
         playerPromise = null;
-        try { p.destroy?.(); } catch { /* ignore */ }
         reject(new Error('player init timeout'));
-      }, 15000);
+      }, 40000);
       const p = new YT.Player(el, {
-        // host must match where the IFrame API itself is served (www.youtube.com).
-        // The nocookie host has no /iframe_api endpoint, so the API ends up
-        // posting commands to an origin the player frame never adopts →
-        // "Unable to post message … Recipient has origin <page>" and playback
-        // never starts.
+        // Must be www.youtube.com (where the IFrame API script is served). The
+        // nocookie host stalls playback at BUFFERING on Safari — segments fail
+        // to load ("network connection was lost") and PLAYING is never reached.
+        // The privacy win isn't worth a stream that won't play; keep this host.
         host: 'https://www.youtube.com',
         width: '100%',
         height: '100%',
@@ -141,6 +154,7 @@ function ensurePlayerSingleton() {
         },
         events: {
           onReady: () => {
+            settled = true;
             clearTimeout(readyTimeout);
             log('player ready');
             // Safari needs explicit autoplay permission on the iframe
@@ -156,6 +170,7 @@ function ensurePlayerSingleton() {
             p.setVolume(Math.round(bridge.volume * 100));
             player = p;
             resolve(p);
+            bridge.onReady();
           },
           onStateChange: (e) => {
             log('state →', STATE_NAMES[String(e.data)] ?? e.data);
@@ -179,6 +194,7 @@ export function useRadio({ onError } = {}) {
   const [volume, setVolume] = useStoredState('nmd_radio_volume', 0.7);
   const [playing, setPlaying] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [playerReady, setPlayerReady] = useState(() => playerIsAttached());
   const [sleepMins, setSleepMins] = useState(null); // chosen duration, null = off
 
   const playingRef = useRef(false);
@@ -227,6 +243,7 @@ export function useRadio({ onError } = {}) {
       setConnecting(false);
       onErrorRef.current?.(msg);
     };
+    bridge.onReady = () => setPlayerReady(true);
   });
 
   useEffect(() => {
@@ -240,25 +257,28 @@ export function useRadio({ onError } = {}) {
     const target = st || station;
     log('play requested:', target.name, `(${target.id})`);
     setConnecting(true);
-    // If nothing is actually rolling after 12s, stop pretending — surface it.
     clearTimeout(watchdog.current);
-    watchdog.current = setTimeout(() => {
-      if (!playingRef.current) {
-        let stuckState = 'unknown';
-        try { stuckState = STATE_NAMES[String(player?.getPlayerState?.())] ?? 'unknown'; } catch { /* ignore */ }
-        log('watchdog fired — never reached PLAYING, player state:', stuckState);
-        setConnecting(false);
-        onErrorRef.current?.(
-          stuckState === 'UNSTARTED' || stuckState === 'CUED'
-            ? 'Autoplay seems blocked — press ▶ directly on the video once.'
-            : 'Stream won’t start — it may be offline. Try another station?'
-        );
-      }
-    }, 12000);
     ensurePlayer().then(p => {
       log('loadVideoById + playVideo:', stationVideoId(target));
       p.loadVideoById(stationVideoId(target));
       p.playVideo();
+      // Start the playback watchdog only now — once the player is ready and
+      // we've actually asked it to play. Timing it from the click would count a
+      // slow cold init against the 12s budget and falsely report failure.
+      clearTimeout(watchdog.current);
+      watchdog.current = setTimeout(() => {
+        if (!playingRef.current) {
+          let stuckState = 'unknown';
+          try { stuckState = STATE_NAMES[String(player?.getPlayerState?.())] ?? 'unknown'; } catch { /* ignore */ }
+          log('watchdog fired — never reached PLAYING, player state:', stuckState);
+          setConnecting(false);
+          onErrorRef.current?.(
+            stuckState === 'UNSTARTED' || stuckState === 'CUED'
+              ? 'Autoplay seems blocked — press ▶ directly on the video once.'
+              : 'Stream won’t start — it may be offline. Try another station?'
+          );
+        }
+      }, 12000);
     }).catch((err) => {
       log('ensurePlayer failed:', err?.message || err);
       clearTimeout(watchdog.current);
@@ -278,12 +298,11 @@ export function useRadio({ onError } = {}) {
 
   const toggle = () => (playing || connecting ? pause() : play());
 
+  // Selecting a station starts it immediately — no separate play press needed.
   const selectStation = (id) => {
     setStationId(id);
-    if (playing || connecting) {
-      const st = stations.find(s => s.id === id);
-      if (st) play(st);
-    }
+    const st = stations.find(s => s.id === id);
+    if (st) play(st);
   };
 
   const addCustomStation = ({ name, videoId, sub, by }) => {
@@ -344,6 +363,7 @@ export function useRadio({ onError } = {}) {
     station,
     playing,
     connecting,
+    playerReady,
     volume, setVolume,
     sleepMins, setSleepMinutes,
     play, pause, toggle, selectStation,

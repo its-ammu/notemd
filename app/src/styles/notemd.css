@@ -762,19 +762,119 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
   background: color-mix(in srgb, var(--accent-purple) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
 }
-.nmd-cm-chip-img {
-  color: var(--fg2);
-  background: var(--bg-hover);
+/* Full image shown in the source editor in place of `![alt](img:…)` markdown.
+   Renders at the stored display size with a hover toolbar to change it. */
+.nmd-cm-imgblock {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 6px 0;
+}
+.nmd-cm-imgblock img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm, 6px);
   border: 1px solid var(--border);
 }
-.nmd-cm-chip-thumb {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  object-fit: cover;
-  margin-left: -2px;
+.nmd-cm-imgblock.loading { width: 100%; max-width: 320px; }
+.nmd-cm-imgblock-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  padding: 16px;
+  border: 1px dashed var(--border-strong, var(--border));
+  border-radius: var(--radius-sm, 6px);
+  color: var(--fg3);
+  font-size: 13px;
+  font-family: var(--font-sans, inherit);
 }
+.nmd-cm-imgbar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-lg, 0 8px 30px rgba(0,0,0,0.18));
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+.nmd-cm-imgblock:hover .nmd-cm-imgbar { opacity: 1; pointer-events: auto; }
+.nmd-cm-imgbar-btn {
+  border: none;
+  background: transparent;
+  color: var(--fg2);
+  font-size: 12px;
+  font-family: var(--font-sans, inherit);
+  padding: 4px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+.nmd-cm-imgbar-btn:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-cm-imgbar-btn.active { background: var(--accent-purple); color: #fff; }
+
+/* Resizable images in the rendered preview — click to pick a display size. */
+.nmd-img-wrap {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: var(--space-4, 16px) 0;
+  line-height: 0;
+}
+.nmd-rendered .nmd-img-wrap img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  transition: outline-color 0.12s ease;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+.nmd-img-wrap:hover img { outline-color: color-mix(in srgb, var(--accent-purple) 30%, transparent); }
+.nmd-img-wrap.open img { outline-color: var(--accent-purple); cursor: pointer; }
+.nmd-img-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.nmd-img-sizes {
+  position: absolute;
+  z-index: 41;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-lg, 0 8px 30px rgba(0,0,0,0.18));
+  line-height: 1;
+}
+.nmd-img-size-btn {
+  border: none;
+  background: transparent;
+  color: var(--fg2);
+  font-size: 12px;
+  font-family: var(--font-sans, inherit);
+  padding: 4px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+.nmd-img-size-btn:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-img-size-btn.active { background: var(--accent-purple); color: #fff; }
 
 /* Autocomplete (@page) popup — match app theme */
 .cm-tooltip.cm-tooltip-autocomplete {

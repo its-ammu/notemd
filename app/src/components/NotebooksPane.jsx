@@ -5,6 +5,7 @@ import { NB_COLORS } from '../utils/constants';
 import { relTime } from '../utils/time';
 import { parseHeadings } from '../utils/markdown';
 import { setPagePublic } from '../lib/sync';
+import { setImageRefSize } from '../lib/uploadImage';
 import { tagStyle } from '../utils/tags';
 import EmptyState from './EmptyState';
 import NotebookBoard from './NotebookBoard';
@@ -242,6 +243,9 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
       pages: nb.pages.map(p => p.id === activePage.id ? { ...p, ...patch, updated: Date.now() } : p),
     }));
   };
+
+  // Resize an image in the rendered preview by rewriting its size in the body.
+  const resizeImage = (src, sizeId) => updatePage({ body: setImageRefSize(activePage.body, src, sizeId) });
 
   // Patch share fields on a page without bumping `updated` (these columns are
   // written directly via RPC, not through the normal sync diff).
@@ -804,7 +808,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                   className={'nmd-pane nmd-pane-preview nmd-paper ' + (activeNb.paper || 'plain')}
                 >
                   {activePage.body.trim() ? (
-                    <MarkdownView source={activePage.body} onNavigate={openPageById} />
+                    <MarkdownView source={activePage.body} onNavigate={openPageById} onResizeImage={resizeImage} />
                   ) : (
                     <div style={{ color: 'var(--fg4)', fontSize: 14, lineHeight: 1.6, maxWidth: 600 }}>
                       <p style={{ fontSize: 15, color: 'var(--fg3)' }}>Empty page.</p>

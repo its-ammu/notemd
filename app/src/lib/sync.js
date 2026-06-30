@@ -356,7 +356,7 @@ function collectImagePaths(notebooks) {
       const body = p.body || '';
       let m;
       IMG_REF_RE.lastIndex = 0;
-      while ((m = IMG_REF_RE.exec(body))) paths.add(m[1]);
+      while ((m = IMG_REF_RE.exec(body))) paths.add(m[1].split('#')[0]); // drop size fragment
     }
   }
   return paths;
