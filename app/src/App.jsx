@@ -230,6 +230,7 @@ function App() {
           displayName={profile?.display_name || (user.email ? user.email.split('@')[0] : '')}
           onOpenPage={(nbId, pageId) => { setActiveSel({ nbId, pageId }); setTab('notebooks'); }}
           onGoToTab={setTab}
+          onOpenTrackerItem={(focus) => { setTrackerFocus(focus); setTab('tracker'); }}
           pomoStats={pomoStats}
         />
       )}

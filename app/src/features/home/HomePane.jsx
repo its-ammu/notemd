@@ -3,6 +3,7 @@ import { fmtDate, relTime, startOfWeek, addDays } from '../../shared/utils/time'
 import { getMeetingsForDay, expandRecurringMeetings } from '../tracker/meetings';
 import EmptyState from '../../shared/components/EmptyState';
 import { DoodleMug, DoodleClock, DoodleSquiggle, DoodleRing } from '../../shared/components/Doodles';
+import HomeListRail from './HomeListRail';
 
 // Quirky greetings, rotated per day (stable across renders so the header
 // doesn't flicker — same day, same line).
@@ -116,7 +117,7 @@ function formatCountdown(mins) {
 
 export default function HomePane({
   notebooks, tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate,
-  onOpenPage, onGoToTab, displayName, pomoStats,
+  onOpenPage, onGoToTab, onOpenTrackerItem, displayName, pomoStats,
 }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayKey = fmtDate(today);
@@ -206,18 +207,6 @@ export default function HomePane({
     }));
   };
 
-  const openLinkedOrTracker = (linkedPageId) => {
-    if (linkedPageId) {
-      for (const nb of notebooks) {
-        if (nb.pages.some(p => p.id === linkedPageId)) {
-          onOpenPage(nb.id, linkedPageId);
-          return;
-        }
-      }
-    }
-    onGoToTab('tracker');
-  };
-
   const sortedTodayMeetings = useMemo(() => {
     return [...todayMeetings].sort((a, b) => {
       if (!a.time && !b.time) return 0;
@@ -295,9 +284,9 @@ export default function HomePane({
                       <button
                         type="button"
                         className="nmd-home-page"
-                        onClick={() => openLinkedOrTracker(m.linkedPageId)}
+                        onClick={() => onOpenTrackerItem({ dateKey: todayKey, meetingId: m.id })}
                       >
-                        <span className="nmd-nb-dot nmd-home-dot-meeting" />
+                        <HomeListRail variant="meeting" />
                         <span className="nmd-home-page-body">
                           <span className="nmd-home-page-title">{m.title || 'Untitled meeting'}</span>
                           {notesPreview && (
@@ -338,24 +327,26 @@ export default function HomePane({
                         className={'nmd-home-page nmd-home-task-row' + (t.done ? ' done' : '')}
                         role="button"
                         tabIndex={0}
-                        onClick={() => openLinkedOrTracker(t.linkedPageId)}
+                        onClick={() => onOpenTrackerItem({ dateKey: todayKey, taskId: t.id })}
                         onKeyDown={e => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            openLinkedOrTracker(t.linkedPageId);
+                            onOpenTrackerItem({ dateKey: todayKey, taskId: t.id });
                           }
                         }}
                       >
-                        <button
-                          type="button"
-                          className={'nmd-home-check' + (t.done ? ' checked' : '')}
-                          onClick={e => { e.stopPropagation(); toggleTask(t.id); }}
-                          aria-label={t.done ? 'Mark incomplete' : 'Mark complete'}
-                        >
-                          {t.done && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
-                          )}
-                        </button>
+                        <HomeListRail variant="task">
+                          <button
+                            type="button"
+                            className={'nmd-home-check' + (t.done ? ' checked' : '')}
+                            onClick={e => { e.stopPropagation(); toggleTask(t.id); }}
+                            aria-label={t.done ? 'Mark incomplete' : 'Mark complete'}
+                          >
+                            {t.done && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+                            )}
+                          </button>
+                        </HomeListRail>
                         <span className="nmd-home-page-body">
                           <span className="nmd-home-page-title">{t.title || 'Untitled'}</span>
                         </span>

@@ -65,9 +65,6 @@
   color: var(--fg4);
   font-weight: 400;
 }
-.nmd-home-task-row .nmd-home-check {
-  margin-top: 3px;
-}
 .nmd-home-check {
   width: 15px; height: 15px; border-radius: 3px;
   border: 1.5px solid var(--border-strong);
@@ -81,14 +78,47 @@
   background: var(--accent-blue); border-color: var(--accent-blue); color: #fff;
 }
 
-.nmd-home-dot-meeting {
-  background: var(--accent-purple, #C89EF4);
+/* Home link rows — margin rail (clock / checkbox); matches title line box */
+.nmd-home-rail {
+  flex-shrink: 0;
+  width: 16px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nmd-home-rail-tab {
+  display: block;
+  width: 22px;
+  height: 6px;
+  border-radius: 3px 3px 2px 2px;
+  background: var(--home-tab-color, var(--accent-blue));
+  box-shadow:
+    0 1px 0 var(--ink-alpha-08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 140ms var(--ease), box-shadow 140ms var(--ease);
+}
+.nmd-home-page:hover .nmd-home-rail-tab {
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 0 var(--ink-alpha-08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.4);
+}
+.nmd-home-rail-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  color: var(--fg3);
+  transition: color 140ms var(--ease);
+}
+.nmd-home-page:hover .nmd-home-rail-icon {
+  color: var(--accent-deep);
 }
 
 /* Recent pages + today links */
 .nmd-home-pages li { list-style: none; }
 .nmd-home-page {
-  width: 100%; display: flex; align-items: flex-start; gap: 10px;
+  width: 100%; display: flex; align-items: flex-start; gap: 8px;
   padding: 8px 8px; border-radius: 6px;
   background: transparent; border: none; cursor: pointer; text-align: left;
   font-family: inherit;
@@ -101,7 +131,8 @@
 }
 .nmd-home-page-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .nmd-home-page-title {
-  font-size: 13px; font-weight: 500; color: var(--fg1);
+  font-size: 13px; font-weight: 500; line-height: 18px;
+  color: var(--fg1);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .nmd-home-page-preview {
@@ -110,8 +141,9 @@
 }
 .nmd-home-page-meta {
   display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+  align-self: flex-start;
+  min-height: 18px;
   font-size: 11px; color: var(--fg4); font-family: var(--font-mono);
-  margin-top: 2px;
 }
 
 /* Stats */
