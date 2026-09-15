@@ -136,6 +136,13 @@
     max-width: 100%;
     width: 100%;
   }
+  .nmd-home-week-strip {
+    padding: 14px 14px 12px;
+    border-radius: 8px;
+  }
+  .nmd-home-card-actions {
+    gap: 8px 10px;
+  }
   .nmd-home-card {
     padding: 14px 14px 12px;
     border-radius: 8px;

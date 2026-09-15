@@ -267,11 +267,72 @@ export default function HomePane({
       )}
 
       <div className="nmd-home-grid">
-        <section className="nmd-home-card">
+        <section className="nmd-home-card nmd-home-today">
           <div className="nmd-home-card-header">
             <h2>Today</h2>
-            <button className="nmd-home-link" onClick={() => onGoToTab('tracker')}>Open tracker →</button>
+            <div className="nmd-home-card-actions">
+              {!quickAddTask && !quickAddMeeting && (
+                <>
+                  <button type="button" className="nmd-home-inline-add" onClick={() => setQuickAddTask(true)}>
+                    + Task
+                  </button>
+                  <button type="button" className="nmd-home-inline-add" onClick={() => setQuickAddMeeting(true)}>
+                    + Meeting
+                  </button>
+                </>
+              )}
+              <button type="button" className="nmd-home-link" onClick={() => onGoToTab('tracker')}>Open tracker →</button>
+            </div>
           </div>
+
+          {(quickAddTask || quickAddMeeting) && (
+            <div className="nmd-home-quickadd-inline">
+              {quickAddTask && (
+                <div className="nmd-home-quickadd-form">
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="What needs doing?"
+                    value={taskText}
+                    onChange={e => setTaskText(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') addQuickTask();
+                      if (e.key === 'Escape') { setQuickAddTask(false); setTaskText(''); }
+                    }}
+                  />
+                  <button type="button" className="nmd-home-quickadd-submit" onClick={addQuickTask}>Add</button>
+                  <button type="button" className="nmd-home-quickadd-cancel" onClick={() => { setQuickAddTask(false); setTaskText(''); }} aria-label="Cancel">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              )}
+              {quickAddMeeting && (
+                <div className="nmd-home-quickadd-form">
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Meeting title"
+                    value={meetingText}
+                    onChange={e => setMeetingText(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') addQuickMeeting();
+                      if (e.key === 'Escape') { setQuickAddMeeting(false); setMeetingText(''); setMeetingTime(''); }
+                    }}
+                  />
+                  <input
+                    type="time"
+                    value={meetingTime}
+                    onChange={e => setMeetingTime(e.target.value)}
+                    className="nmd-home-quickadd-time"
+                  />
+                  <button type="button" className="nmd-home-quickadd-submit" onClick={addQuickMeeting}>Add</button>
+                  <button type="button" className="nmd-home-quickadd-cancel" onClick={() => { setQuickAddMeeting(false); setMeetingText(''); setMeetingTime(''); }} aria-label="Cancel">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {todayMeetings.length > 0 && (
             <div className="nmd-home-sub">
@@ -351,9 +412,8 @@ export default function HomePane({
                           <span className="nmd-home-page-title">{t.title || 'Untitled'}</span>
                         </span>
                         {t.priority && t.priority !== 'none' && (
-                          <span className="nmd-home-page-meta">
-                            <span className={`nmd-task-prio-dot nmd-prio-${t.priority}`} />
-                            <span>{t.priority}</span>
+                          <span className="nmd-home-page-meta" title={`${t.priority} priority`}>
+                            <span className={`nmd-task-prio-dot nmd-prio-${t.priority}`} aria-label={`${t.priority} priority`} />
                           </span>
                         )}
                       </div>
@@ -398,74 +458,11 @@ export default function HomePane({
           )}
         </section>
 
-        <section className="nmd-home-card nmd-home-quickadd">
-          <div className="nmd-home-card-header"><h2>Quick add</h2></div>
-          <div className="nmd-home-quickadd-btns">
-            {!quickAddTask && !quickAddMeeting && (
-              <>
-                <button className="nmd-home-quickadd-btn" onClick={() => setQuickAddTask(true)}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Add task
-                </button>
-                <button className="nmd-home-quickadd-btn" onClick={() => setQuickAddMeeting(true)}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                  </svg>
-                  Add meeting
-                </button>
-              </>
-            )}
-            {quickAddTask && (
-              <div className="nmd-home-quickadd-form">
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="What needs doing?"
-                  value={taskText}
-                  onChange={e => setTaskText(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') addQuickTask();
-                    if (e.key === 'Escape') { setQuickAddTask(false); setTaskText(''); }
-                  }}
-                />
-                <button className="nmd-home-quickadd-submit" onClick={addQuickTask}>Add</button>
-                <button className="nmd-home-quickadd-cancel" onClick={() => { setQuickAddTask(false); setTaskText(''); }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                </button>
-              </div>
-            )}
-            {quickAddMeeting && (
-              <div className="nmd-home-quickadd-form">
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Meeting title"
-                  value={meetingText}
-                  onChange={e => setMeetingText(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') addQuickMeeting();
-                    if (e.key === 'Escape') { setQuickAddMeeting(false); setMeetingText(''); setMeetingTime(''); }
-                  }}
-                />
-                <input
-                  type="time"
-                  value={meetingTime}
-                  onChange={e => setMeetingTime(e.target.value)}
-                  className="nmd-home-quickadd-time"
-                />
-                <button className="nmd-home-quickadd-submit" onClick={addQuickMeeting}>Add</button>
-                <button className="nmd-home-quickadd-cancel" onClick={() => { setQuickAddMeeting(false); setMeetingText(''); setMeetingTime(''); }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                </button>
-              </div>
-            )}
+        <section className="nmd-home-week-strip" aria-labelledby="nmd-home-week-heading">
+          <div className="nmd-home-week-strip-header">
+            <h2 id="nmd-home-week-heading">This week</h2>
+            <DoodleSquiggle width={64} className="nmd-week-squiggle" />
           </div>
-        </section>
-
-        <section className="nmd-home-card nmd-home-stats">
-          <div className="nmd-home-card-header"><h2>This week</h2></div>
           <div className="nmd-home-mini-week">
             {weekDays.map(d => (
               <button

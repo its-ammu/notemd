@@ -15,10 +15,13 @@
 .nmd-home-grid {
   max-width: 1100px; margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
-.nmd-home-stats { grid-column: 1 / -1; }
+@media (max-width: 900px) {
+  .nmd-home-grid { grid-template-columns: 1fr; }
+}
+.nmd-home-week-strip { grid-column: 1 / -1; }
 
 .nmd-home-card {
   background: var(--bg-raised);
@@ -42,6 +45,34 @@
 }
 .nmd-home-link:hover { text-decoration: underline; }
 
+.nmd-home-card-actions {
+  display: flex; align-items: center; flex-wrap: wrap;
+  justify-content: flex-end; gap: 8px 10px;
+}
+/* Sketchy add chips — dashed like a penciled-in box */
+.nmd-home-inline-add {
+  font-size: 12px; font-weight: 500; color: var(--fg2);
+  background: var(--bg); cursor: pointer;
+  font-family: inherit;
+  padding: 3px 10px 4px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 7px;
+  transition: color 120ms var(--ease), border-color 120ms var(--ease),
+              background 120ms var(--ease), transform 120ms var(--ease);
+}
+.nmd-home-inline-add:hover {
+  color: var(--accent-deep);
+  border-color: var(--accent-blue);
+  background: var(--accent-tint);
+  transform: rotate(-1deg);
+}
+.nmd-home-inline-add:nth-of-type(2):hover { transform: rotate(1deg); }
+.nmd-home-quickadd-inline {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-strong);
+}
+
 .nmd-home-sub { margin-top: 10px; }
 .nmd-home-sub:first-of-type { margin-top: 0; }
 .nmd-home-sub h3 {
@@ -59,6 +90,11 @@
 .nmd-home-task-row {
   cursor: pointer;
   font-family: inherit;
+  border-radius: 6px;
+}
+.nmd-home-task-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .nmd-home-task-row.done .nmd-home-page-title {
   text-decoration: line-through;
@@ -66,14 +102,15 @@
   font-weight: 400;
 }
 .nmd-home-check {
-  width: 15px; height: 15px; border-radius: 3px;
+  width: 15px; height: 15px; border-radius: 4px 3px 4px 3px;
   border: 1.5px solid var(--border-strong);
   background: transparent; cursor: pointer; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   color: transparent; flex-shrink: 0;
+  transform: rotate(-2deg); /* wobbly, hand-drawn */
   transition: all 120ms var(--ease);
 }
-.nmd-home-check:hover { border-color: var(--fg3); }
+.nmd-home-check:hover { border-color: var(--fg3); transform: rotate(2deg) scale(1.08); }
 .nmd-home-check.checked {
   background: var(--accent-blue); border-color: var(--accent-blue); color: #fff;
 }
@@ -109,10 +146,12 @@
   width: 16px;
   height: 16px;
   color: var(--fg3);
-  transition: color 140ms var(--ease);
+  transform: rotate(-6deg); /* hand-placed, like the doodles */
+  transition: color 140ms var(--ease), transform 140ms var(--ease);
 }
 .nmd-home-page:hover .nmd-home-rail-icon {
   color: var(--accent-deep);
+  transform: rotate(4deg);
 }
 
 /* Recent pages + today links */
@@ -145,6 +184,25 @@
   min-height: 18px;
   font-size: 11px; color: var(--fg4); font-family: var(--font-mono);
 }
+
+/* Week summary strip — a penciled-in note at the foot of the page:
+   same sheet as the cards but with a sketchy dashed outline, no shadow */
+.nmd-home-week-strip {
+  background: var(--bg-raised);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: 18px 20px 16px;
+  box-shadow: none;
+}
+.nmd-home-week-strip-header {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 12px;
+}
+.nmd-home-week-strip-header h2 {
+  font-size: 14px; font-weight: 600; color: var(--fg1);
+  margin: 0; letter-spacing: -0.005em;
+}
+.nmd-week-squiggle { opacity: 0.6; align-self: center; }
 
 /* Stats */
 .nmd-home-stat-grid {
@@ -294,19 +352,7 @@
 .nmd-home-mini-dot.meeting { background: var(--accent-purple, #C89EF4); }
 .nmd-home-mini-day.today .nmd-home-mini-dot { background: rgba(255,255,255,0.7); }
 
-/* Quick add section */
-.nmd-home-quickadd-btns { display: flex; flex-direction: column; gap: 10px; }
-.nmd-home-quickadd-btn {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 16px; border-radius: 8px;
-  background: var(--bg); border: 1px dashed var(--border);
-  color: var(--fg2); font-size: 13px; font-weight: 500;
-  cursor: pointer; transition: background 120ms var(--ease), border-color 120ms var(--ease);
-}
-.nmd-home-quickadd-btn:hover {
-  background: var(--bg-hover); border-color: var(--fg4);
-}
-.nmd-home-quickadd-btn svg { color: var(--fg3); }
+/* Quick add (inline on Today) */
 .nmd-home-quickadd-form {
   display: flex; gap: 8px; align-items: center; flex: 1; min-width: 0;
 }
