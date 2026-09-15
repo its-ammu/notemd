@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Task from './Task';
 import { DAY_NAMES } from '../../shared/utils/constants';
+import { DoodleClockMini, DoodleClockAdd, IconCopy, IconCheck, IconPlus } from '../../shared/components/Doodles';
 
 function fmtTime(t) {
   if (!t) return '';
@@ -18,7 +19,15 @@ function fmtDuration(d) {
   return m ? `${h}h${m}m` : `${h}h`;
 }
 
-export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onStartPomodoro, onDuplicate }) {
+/* Case transform for copied text, per the user's copy settings. */
+function applyCase(text, mode) {
+  if (mode === 'lower') return text.toLowerCase();
+  if (mode === 'upper') return text.toUpperCase();
+  if (mode === 'title') return text.replace(/\w\S*/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+  return text;
+}
+
+export default function DayColumn({ date, tasks, meetings, showMeetings = true, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onEditMeeting, onAddMeeting, onStartPomodoro, onDuplicate, copyPrefs = {} }) {
   const [adding, setAdding] = useState(false);
   const [addText, setAddText] = useState('');
   const [copied, setCopied] = useState(false);
@@ -58,7 +67,12 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
 
     if (meetings && meetings.length > 0) {
       lines.push('', 'Meetings:');
+      const titleOnly = copyPrefs.meetingDetails === 'title';
       meetings.forEach(m => {
+        if (titleOnly) {
+          lines.push(`- ${m.title}`);
+          return;
+        }
         const timeStr = m.time ? fmtTime(m.time) : '';
         const durStr = m.duration ? ` (${fmtDuration(m.duration)})` : '';
         lines.push(`- ${timeStr ? timeStr + ' ' : ''}${m.title}${durStr}`);
@@ -70,7 +84,7 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
       lines.push('(no entries)');
     }
 
-    const text = lines.join('\n');
+    const text = applyCase(lines.join('\n'), copyPrefs.textCase);
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       showToast(`Copied ${DAY_NAMES[dayNameIndex]}'s entries`);
@@ -107,35 +121,40 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
           <span className="nmd-day-num">{dateNum}</span>
         </div>
         <div className="nmd-day-actions">
+          <button className="nmd-day-btn" title="Add meeting" onClick={onAddMeeting}>
+            <DoodleClockAdd size={15} />
+          </button>
           <button
             className={'nmd-day-btn' + (copied ? ' copied' : '')}
             title="Copy entries"
             onClick={copyDay}
           >
-            {copied ? (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12l5 5L20 6" /></svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="8" y="8" width="12" height="12" rx="2" />
-                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-              </svg>
-            )}
+            {copied ? <IconCheck /> : <IconCopy />}
           </button>
-          {meetingCount > 0 && (
-            <span className="nmd-day-mtg-chip" title={`${meetingCount} meeting${meetingCount !== 1 ? 's' : ''}`}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </svg>
-              {meetingCount}
-            </span>
-          )}
         </div>
       </div>
 
       <div className="nmd-day-body">
-        {tasks.length === 0 && !adding && (
+        {tasks.length === 0 && (meetingCount === 0 || !showMeetings) && !adding && (
           <div className="nmd-day-empty">—</div>
+        )}
+        {showMeetings && meetingCount > 0 && (
+          <div className="nmd-day-meetings">
+            {[...meetings]
+              .sort((a, b) => (a.time || '99').localeCompare(b.time || '99'))
+              .map((m) => (
+                <button
+                  key={m.id}
+                  className="nmd-day-meeting"
+                  onClick={() => onEditMeeting(m.id)}
+                  title={m.title + (m.time ? ` · ${fmtTime(m.time)}` : '') + (m.duration ? ` (${fmtDuration(m.duration)})` : '')}
+                >
+                  <DoodleClockMini size={14} className="nmd-day-meeting-clock" />
+                  <span className="nmd-day-meeting-title">{m.title}</span>
+                  {m.time && <span className="nmd-day-meeting-time">{fmtTime(m.time)}</span>}
+                </button>
+              ))}
+          </div>
         )}
         {tasks.map((t, idx) => (
           <Task
@@ -201,7 +220,7 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
               if (id) onDropTask(id, null);
             }}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 5v14M5 12h14" /></svg>
+            <IconPlus />
             Add task
           </button>
         )}

@@ -7,8 +7,9 @@ import { startOfWeek, addDays, fmtDate, fmtRange } from '../../shared/utils/time
 import { expandRecurringMeetings } from './meetings';
 import { PRIO } from '../../shared/utils/constants';
 import { HelpIcon } from '../../shared/components/Tooltip';
+import { DoodleClockMini } from '../../shared/components/Doodles';
 
-export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage, onStartPomodoro, pomoStats, focusRequest, onFocusHandled }) {
+export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage, onStartPomodoro, pomoStats, focusRequest, onFocusHandled, meetingsDisplay = 'inline', copyPrefs }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [draggingId, setDraggingId] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
@@ -285,9 +286,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           <span className="nmd-pill"><b>{doneCount}</b>/{totalCount} done</span>
           {weekMeetingCount > 0 && (
             <span className="nmd-pill">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 4, verticalAlign: -1 }}>
-                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-              </svg>
+              <DoodleClockMini size={10} strokeWidth={2.4} style={{ marginRight: 4, verticalAlign: -1 }} />
               <b>{weekMeetingCount}</b> mtg{weekMeetingCount !== 1 ? 's' : ''}
             </span>
           )}
@@ -316,7 +315,11 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               draggingId={draggingId}
               showToast={showToast}
               onEditTask={(id) => setEditingTask({ dateKey: key, id })}
+              onEditMeeting={(id) => setEditingMeeting({ dateKey: key, id })}
+              onAddMeeting={() => setEditingMeeting({ dateKey: key, new: true })}
               meetings={getMeetings(d)}
+              showMeetings={meetingsDisplay !== 'drawer'}
+              copyPrefs={copyPrefs}
               onStartPomodoro={onStartPomodoro}
               onDuplicate={(task) => duplicateTask(key, task)}
             />
@@ -324,12 +327,14 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
         })}
       </div>
 
-      <MeetingsDrawer
-        days={days}
-        getMeetings={getMeetings}
-        onAddMeeting={(dateKey) => setEditingMeeting({ dateKey, new: true })}
-        onEditMeeting={(dateKey, id) => setEditingMeeting({ dateKey, id })}
-      />
+      {meetingsDisplay === 'drawer' && (
+        <MeetingsDrawer
+          days={days}
+          getMeetings={getMeetings}
+          onAddMeeting={(dateKey) => setEditingMeeting({ dateKey, new: true })}
+          onEditMeeting={(dateKey, id) => setEditingMeeting({ dateKey, id })}
+        />
+      )}
 
       {/* Task dialog */}
       {taskDialogData && (

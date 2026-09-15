@@ -37,7 +37,6 @@ function App() {
   const [activeSel, setActiveSel] = useStoredState('nmd_active', { nbId: null, pageId: null });
   const [showSettings, setShowSettings] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
-  const [howToExpanded, setHowToExpanded] = useState(false);
   const [howToTab, setHowToTab] = useState('overview');
   const { toast, showToast, dismissToast } = useToast();
   const [theme, setTheme] = useStoredState('nmd_theme', 'light');
@@ -258,6 +257,8 @@ function App() {
           pomoStats={pomoStats}
           focusRequest={trackerFocus}
           onFocusHandled={() => setTrackerFocus(null)}
+          meetingsDisplay={prefs.meetingsDisplay || 'inline'}
+          copyPrefs={{ meetingDetails: prefs.copyMeetingDetails || 'full', textCase: prefs.copyCase || 'original' }}
         />
       )}
 
@@ -306,8 +307,6 @@ function App() {
       <HowToModal
         open={showHowTo}
         onClose={() => setShowHowTo(false)}
-        expanded={howToExpanded}
-        onToggleExpanded={setHowToExpanded}
         howToTab={howToTab}
         setHowToTab={setHowToTab}
       />

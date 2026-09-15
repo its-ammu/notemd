@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { DoodleClockMini } from '../../shared/components/Doodles';
 
 export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, onClose }) {
   const [step, setStep] = useState('menu'); // 'menu' | 'custom'
@@ -50,9 +51,7 @@ export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, on
             Start Pomo
           </button>
           <button className="nmd-ctx-item" onClick={(e) => { e.stopPropagation(); setStep('custom'); }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-            </svg>
+            <DoodleClockMini size={13} strokeWidth={1.9} />
             Custom Pomo
           </button>
           <button className="nmd-ctx-item" onClick={(e) => { e.stopPropagation(); onDuplicate(); onClose(); }}>

@@ -137,13 +137,10 @@
 
 .nmd-day-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 14px 10px;
+  padding: 14px 14px 9px;
   gap: 8px;
-  border-bottom: 2px solid var(--fg2);
+  border-bottom: 1px solid var(--border-strong);
   margin: 0 6px;
-}
-.nmd-day.today .nmd-day-header {
-  border-bottom-color: var(--accent-blue);
 }
 .nmd-day-labels {
   display: flex; align-items: baseline; gap: 8px;
@@ -155,7 +152,16 @@
   letter-spacing: 0;
   font-family: var(--font-sans);
 }
-.nmd-day.today .nmd-day-name { color: var(--accent-blue); font-weight: 600; }
+/* Today gets a hand-drawn ring around the day name, like the site */
+.nmd-day.today .nmd-day-name {
+  color: var(--accent-deep); font-weight: 600;
+  display: inline-block;
+  padding: 1px 8px;
+  margin-left: -8px;
+  border: 1.5px solid var(--accent-blue);
+  border-radius: 55% 45% 50% 50% / 50% 55% 45% 50%;
+  transform: rotate(-2deg);
+}
 .nmd-day-num {
   font-size: 14px; font-weight: 500; color: var(--fg2);
   line-height: 1; letter-spacing: -0.01em;
@@ -178,13 +184,35 @@
 .nmd-day-btn:hover { background: var(--bg-hover); color: var(--fg1); }
 .nmd-day-btn.copied { color: var(--accent-blue); opacity: 1; }
 
-.nmd-day-mtg-chip {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; font-family: var(--font-mono);
-  color: var(--fg3);
-  padding: 1px 5px 1px 4px;
-  background: var(--bg-hover);
-  border-radius: 10px;
+/* Meetings listed at the top of each day, like the site */
+.nmd-day-meetings {
+  display: flex; flex-direction: column;
+  margin-bottom: 2px;
+}
+.nmd-day-meeting {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 7px 4px 7px 6px;
+  background: transparent; border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  font-family: inherit; text-align: left; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.nmd-day-meeting:hover { background: var(--bg-hover); }
+.nmd-day-meeting-clock {
+  color: var(--fg3); flex-shrink: 0;
+  transform: rotate(-6deg);
+}
+.nmd-day-meeting-title {
+  flex: 1; min-width: 0;
+  font-size: 12.5px; font-weight: 400;
+  color: var(--fg1); line-height: 1.4;
+  word-break: break-word;
+}
+.nmd-day-meeting-time {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--fg4); flex-shrink: 0;
 }
 
 .nmd-day-body {
@@ -271,7 +299,8 @@
 .nmd-check {
   width: 15px; height: 15px;
   border: 1.5px solid var(--border-strong);
-  border-radius: 50%;
+  border-radius: 5px 4px 5px 4px; /* hand-cut corners, like the site */
+  transform: rotate(-2deg);
   background: transparent;
   cursor: pointer; padding: 0;
   flex-shrink: 0; margin-top: 2px;
@@ -279,9 +308,12 @@
   color: transparent;
   transition: all var(--dur-fast) var(--ease);
 }
-.nmd-check:hover { border-color: var(--fg2); background: var(--bg-hover); }
+.nmd-check:hover {
+  border-color: var(--accent-blue); background: var(--accent-tint);
+  transform: rotate(0deg);
+}
 .nmd-check.checked {
-  background: var(--fg2); border-color: var(--fg2); color: var(--bg);
+  background: var(--accent-blue); border-color: var(--accent-blue); color: #fff;
 }
 
 .nmd-task-title {
@@ -326,7 +358,7 @@
 }
 .nmd-subtask:last-child { border-bottom: none; }
 .nmd-subtask .nmd-check {
-  width: 13px; height: 13px; border-radius: 3px;
+  width: 13px; height: 13px; border-radius: 4px 3px 4px 3px;
   margin-top: 1px;
   border-width: 1.5px;
 }

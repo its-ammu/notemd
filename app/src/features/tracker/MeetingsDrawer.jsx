@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { fmtDate } from '../../shared/utils/time';
 import { DAY_NAMES } from '../../shared/utils/constants';
+import { DoodleClockMini } from '../../shared/components/Doodles';
 
 function fmtTime(t) {
   if (!t) return '';
@@ -31,10 +32,7 @@ export default function MeetingsDrawer({ days, getMeetings, onAddMeeting, onEdit
         onClick={() => setOpen(v => !v)}
         aria-label={open ? 'Hide meetings' : 'Show meetings'}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 6v6l4 2" />
-        </svg>
+        <DoodleClockMini size={14} strokeWidth={1.9} />
         <span className="nmd-mtg-drawer-label">Meetings</span>
         {totalCount > 0 && <span className="nmd-mtg-drawer-count">{totalCount}</span>}
         <svg

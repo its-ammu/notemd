@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 
 const DEFAULT_PREFS = {
   defaultView: 'home',
+  meetingsDisplay: 'inline', // 'inline' (in day columns) | 'drawer' (bottom panel)
+  copyMeetingDetails: 'full', // 'full' (time + duration + notes) | 'title' (name only)
+  copyCase: 'original', // 'original' | 'lower' | 'upper' | 'title'
 };
 
 export function useProfile(userId, userEmail) {

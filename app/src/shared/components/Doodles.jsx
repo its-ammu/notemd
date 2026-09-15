@@ -75,6 +75,71 @@ export function DoodleClock({ size = 52, className = '', wiggle = false }) {
   );
 }
 
+/* The small wobbly clock for list rows, chips and menu items — a simpler
+   cousin of DoodleClock that stays readable at tiny sizes. */
+export function DoodleClockMini({ size = 16, strokeWidth = 1.75, className = '', style }) {
+  return (
+    <svg
+      className={className}
+      width={size} height={size} viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth={strokeWidth}
+      strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true" style={style}
+    >
+      <path d="M12 3.5 C16.8 3.2 20.6 7.4 20.2 12.2 C19.8 16.9 16.4 20.7 11.7 20.3 C7.1 19.9 3.6 16 4 11.4 C4.4 6.8 7.7 3.9 12 3.5 Z" />
+      <path d="M12 8 L11.9 12.4 L15 14.2" />
+    </svg>
+  );
+}
+
+/* DoodleClockMini with a little + floating off the top-right corner — the
+   tracker's "add meeting" icon. The clock sits slightly down-left so the
+   plus has breathing room instead of touching the dial. */
+export function DoodleClockAdd({ size = 16, strokeWidth = 1.75, className = '', style }) {
+  return (
+    <svg
+      className={className}
+      width={size} height={size} viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth={strokeWidth}
+      strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true" style={style}
+    >
+      <path d="M10.5 6.2 C14.7 5.9 18.1 9.5 17.8 13.6 C17.5 17.6 14.5 20.8 10.4 20.5 C6.4 20.2 3.5 16.9 3.8 12.9 C4.1 8.9 6.8 6.5 10.5 6.2 Z" />
+      <path d="M10.5 10.2 L10.4 13.9 L13.1 15.5" />
+      <path d="M19.5 2.5 v6 M16.5 5.5 h6" />
+    </svg>
+  );
+}
+
+/* ——— Plain mini icons ———————————————————————————————————————————————
+   Geometric (non-doodle) icons shared by the tracker's small buttons.
+   Kept here so every reusable SVG lives in one place. */
+
+export function IconPlus({ size = 11, strokeWidth = 1.5, className = '' }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} aria-hidden="true">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function IconCheck({ size = 13, strokeWidth = 2, className = '' }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} aria-hidden="true">
+      <path d="M4 12l5 5L20 6" />
+    </svg>
+  );
+}
+
+export function IconCopy({ size = 15, strokeWidth = 1.5, className = '' }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} aria-hidden="true">
+      <rect x="8" y="8" width="12" height="12" rx="2" />
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+    </svg>
+  );
+}
+
 /* A spiral notebook with scribbles. */
 export function DoodleNotebook({ size = 52, className = '' }) {
   return (

@@ -3,34 +3,18 @@ import React from 'react';
 export default function HowToModal({
   open,
   onClose,
-  expanded,
-  onToggleExpanded,
   howToTab,
   setHowToTab,
 }) {
   if (!open) return null;
   return (
         <div className="nmd-modal-backdrop" onClick={onClose}>
-          <div className={'nmd-modal nmd-modal-howto' + (expanded ? ' expanded' : '')} onClick={e => e.stopPropagation()}>
+          <div className="nmd-modal nmd-modal-howto" onClick={e => e.stopPropagation()}>
             <div className="nmd-modal-header">
               <h2>How to use NoteMD</h2>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button
-                  className="nmd-iconbtn"
-                  onClick={() => onToggleExpanded(!expanded)}
-                  aria-label={expanded ? 'Shrink' : 'Expand'}
-                  title={expanded ? 'Shrink' : 'Expand'}
-                >
-                  {expanded ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v5H4M20 15h-5v5M9 9 4 4M20 20l-5-5" /></svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10V4h6M20 14v6h-6M4 4l6 6M20 20l-6-6" /></svg>
-                  )}
-                </button>
-                <button className="nmd-iconbtn" onClick={() => onClose()} aria-label="Close">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m6 6 12 12M18 6 6 18" /></svg>
-                </button>
-              </div>
+              <button className="nmd-iconbtn" onClick={() => onClose()} aria-label="Close">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              </button>
             </div>
             <div className="nmd-howto-tabs">
               <button className={howToTab === 'overview' ? 'active' : ''} onClick={() => setHowToTab('overview')}>Overview</button>
