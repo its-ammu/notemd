@@ -616,7 +616,7 @@ const underlineMarks = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations }
 );
 
-export default function MarkdownEditor({ value, onChange, placeholder, notebooks = [] }) {
+export default function MarkdownEditor({ value, onChange, notebooks = [] }) {
   const containerRef = useRef(null);
   const viewRef = useRef(null);
   const fileInputRef = useRef(null);

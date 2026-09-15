@@ -131,10 +131,6 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
 
   // ── Meeting operations ───────────────────────────────────────────
 
-  const addMeeting = (dateKey) => {
-    setEditingMeeting({ dateKey, new: true });
-  };
-
   const saveMeeting = (dateKey, id, patch) => {
     setMeetingsByDate(prev => {
       const next = { ...prev };

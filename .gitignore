@@ -3,6 +3,11 @@ CLAUDE.md
 secret
 supabase/.temp
 node_modules
+.DS_Store
+
+# Xcode user-specific
+xcuserdata/
+*.xcuserstate
 
 # Personal planning docs, not for the public repo
 docs/encryption-plan.md

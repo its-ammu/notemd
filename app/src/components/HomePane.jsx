@@ -140,7 +140,7 @@ export default function HomePane({
     return () => clearInterval(interval);
   }, []);
 
-  const nextMeeting = useMemo(() => getNextMeeting(todayMeetings), [todayMeetings, Math.floor(Date.now() / 60000)]);
+  const nextMeeting = getNextMeeting(todayMeetings);
 
   // Mini week calendar data
   const weekDays = useMemo(() => {

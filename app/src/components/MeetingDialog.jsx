@@ -8,7 +8,7 @@ const REPEAT_OPTIONS = [
   { value: 'biweekly', label: 'Every 2 weeks' },
 ];
 
-export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, onDeleteOccurrence, onDeleteFuture, onClose, notebooks, onNavigateToPage }) {
+export default function MeetingDialog({ meeting, onUpdate, onDelete, onDeleteOccurrence, onDeleteFuture, onClose, notebooks, onNavigateToPage }) {
   const [title, setTitle] = useState(meeting.title);
   const [time, setTime] = useState(meeting.time || '');
   const [duration, setDuration] = useState(meeting.duration || '30');

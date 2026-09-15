@@ -47,7 +47,7 @@ export default function PomodoroTimer({ task, onClose, onSessionComplete, onToas
   const [secondsLeft, setSecondsLeft] = useState(workSecs);
   const [running, setRunning] = useState(false);
   const [phase, setPhase] = useState('idle');
-  const [sessions, setSessions] = useState(0);
+  const [, setSessions] = useState(0);
   const [pos, setPos] = useState(() => ({
     x: window.innerWidth - 228,
     y: window.innerHeight - 360,
