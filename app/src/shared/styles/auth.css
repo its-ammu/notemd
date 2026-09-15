@@ -1,0 +1,96 @@
+/* NoteMD UI kit */
+html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font-sans); color: var(--fg2); }
+* { box-sizing: border-box; }
+
+/* Modern chrome: quiet thin scrollbars + accent-tinted text selection */
+* { scrollbar-width: thin; scrollbar-color: var(--ink-faint) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--ink-faint); border-radius: 5px;
+  border: 2px solid transparent; background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--ink-subtle); }
+::selection { background: var(--accent-tint-strong); }
+
+/* Mobile: allow body to scroll */
+@media (max-width: 720px) {
+  html, body {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+/* Auth screen */
+/* Auth screen */
+.nmd-auth-shell {
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 24px; gap: 28px; background: var(--bg);
+}
+.nmd-auth-card {
+  width: 100%; max-width: 380px;
+  background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-xl);
+  padding: 28px 28px 24px; box-shadow: var(--shadow-card);
+}
+.nmd-auth-brand { display: flex; align-items: center; gap: 10px; justify-content: center; }
+.nmd-brand-mark {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 5px;
+}
+.nmd-brand-mark span {
+  font-family: var(--font-sans); font-weight: 700; font-size: 18px;
+  color: var(--fg1); letter-spacing: -0.02em; line-height: 1;
+}
+.nmd-brand-mark::after {
+  content: ""; position: absolute; left: 4px; right: 4px; bottom: 2px;
+  height: 2px; border-radius: 1px; background: var(--accent-blue);
+}
+.nmd-brand-mark-lg { width: 40px; height: 40px; border-radius: 7px; }
+.nmd-brand-mark-lg span { font-size: 26px; }
+.nmd-brand-mark-lg::after { left: 6px; right: 6px; bottom: 3px; height: 3px; border-radius: 1.5px; }
+.nmd-brand-name { font-family: var(--font-sans); font-weight: 600; font-size: 18px; color: var(--fg1); letter-spacing: -0.01em; }
+.nmd-auth-card .nmd-brand-name { font-size: 13px; color: var(--fg3); font-weight: 500; margin-bottom: 10px; letter-spacing: 0.01em; }
+.nmd-auth-card h1 { font-size: 20px; font-weight: 600; color: var(--fg1); margin: 0 0 6px; letter-spacing: -0.01em; }
+.nmd-auth-sub { font-size: 13px; color: var(--fg3); margin: 0 0 20px; line-height: 1.45; }
+.nmd-auth-form { display: flex; flex-direction: column; gap: 12px; }
+.nmd-auth-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--fg3); font-weight: 500; }
+.nmd-auth-form input {
+  font: inherit; font-size: 13px; color: var(--fg1);
+  padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg); outline: none;
+  transition: border-color 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+.nmd-auth-form input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--accent-tint); }
+.nmd-pw-field { position: relative; display: flex; }
+.nmd-pw-field input { flex: 1; padding-right: 36px; transition: border-color 120ms var(--ease), box-shadow 120ms var(--ease); }
+.nmd-pw-field.invalid input { border-color: #c1432b; }
+.nmd-pw-field.invalid input:focus { border-color: #c1432b; box-shadow: 0 0 0 3px rgba(193,67,43,0.15); }
+.nmd-pw-field.valid input { border-color: #3a8a5f; }
+.nmd-pw-field.valid input:focus { border-color: #3a8a5f; box-shadow: 0 0 0 3px rgba(58,138,95,0.18); }
+.nmd-pw-hint { font-size: 11.5px; margin-top: 4px; }
+.nmd-pw-hint.err { color: #c1432b; }
+.nmd-pw-hint.ok { color: #3a8a5f; }
+.nmd-pw-toggle {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; border-radius: 5px;
+  background: transparent; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--fg4); transition: color 120ms var(--ease), background 120ms var(--ease);
+}
+.nmd-pw-toggle:hover { color: var(--fg2); background: var(--bg-hover); }
+.nmd-pw-toggle:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 1px; }
+.nmd-auth-form .nmd-btn { margin-top: 4px; justify-content: center; padding: 9px 12px; }
+.nmd-auth-err { font-size: 12px; color: #c1432b; background: rgba(193,67,43,0.08); padding: 7px 10px; border-radius: 5px; }
+.nmd-auth-info { font-size: 12px; color: var(--accent-deep); background: rgba(107,82,174,0.08); padding: 7px 10px; border-radius: 5px; }
+.nmd-auth-toggle { font-size: 12px; color: var(--fg3); text-align: center; margin-top: 18px; }
+.nmd-auth-toggle button {
+  background: none; border: none; padding: 0; margin-left: 4px;
+  font: inherit; font-size: 12px; color: var(--accent-blue); cursor: pointer;
+}
+.nmd-auth-toggle button:hover { text-decoration: underline; }
+.nmd-auth-forgot { text-align: right; margin-top: -6px; }
+.nmd-auth-forgot button {
+  background: none; border: none; padding: 0;
+  font: inherit; font-size: 12px; color: var(--accent-blue); cursor: pointer;
+}
+.nmd-auth-forgot button:hover { text-decoration: underline; }

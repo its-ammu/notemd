@@ -26,3 +26,4 @@ tauri-plugin-log = "2"
 # Pinned: time 0.3.52 broke the API that cookie 0.18.1 (a Tauri dep) relies on.
 time = "=0.3.51"
 tauri-plugin-localhost = "2.3.2"
+tauri-plugin-opener = "2"

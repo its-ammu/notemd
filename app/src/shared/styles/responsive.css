@@ -1,0 +1,245 @@
+/* =========================================================================
+   Mobile responsive layout (≤ 720px)
+   ========================================================================= */
+@media (max-width: 720px) {
+  /* App shell: content flows naturally, rail is fixed at the bottom */
+  .nmd-app-shell,
+  .nmd-app-shell.tracker-layout {
+    display: block;
+    grid-template-columns: none;
+    grid-template-rows: none;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+    overflow: visible;
+    overflow-y: auto;
+  }
+  .nmd-rail {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    top: auto;
+    height: auto;
+    z-index: 60;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    gap: 2px;
+  }
+  .nmd-rail-logo,
+  .nmd-rail-spacer { display: none; }
+  .nmd-rail-btn { width: 44px; height: 44px; border-radius: 10px; }
+  .nmd-rail-btn .nmd-tip { display: none; }
+  .nmd-rail-btn.active::before {
+    left: 10px; right: 10px; top: auto; bottom: -2px;
+    width: auto; height: 2px;
+  }
+
+  /* Notebooks pane: show only sidebar or main based on mobile state.
+     Desktop collapse/resize must not stick on small screens. */
+  .nmd-app-shell.sidebar-collapsed:not(.tracker-layout) {
+    grid-template-columns: none;
+  }
+  .nmd-app-shell.sidebar-collapsed .nmd-sidebar { display: flex; }
+  .nmd-sidebar.m-off,
+  .nmd-main.m-off { display: none; }
+  .nmd-sidebar {
+    padding: 14px 12px 12px;
+    height: auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .nmd-main {
+    min-width: 0;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Editor header: tighter, wrap extras */
+  .nmd-header {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .nmd-header .nmd-saved { display: none; }
+  .nmd-header .nmd-paper-picker { display: none; }
+  .nmd-title-input {
+    font-size: 15px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .nmd-mobile-back { display: inline-flex; }
+  .nmd-sidebar-resizer,
+  .nmd-sidebar-close,
+  .nmd-sidebar-open { display: none !important; }
+
+  /* Editor body */
+  .nmd-pane { padding: 20px 16px 80px; }
+  .nmd-pane-write textarea { font-size: 14px; }
+  .nmd-editor.nmd-mode-split,
+  .nmd-editor.nmd-mode-preview.with-toc {
+    grid-template-columns: 1fr !important;
+  }
+  .nmd-editor.nmd-mode-split .nmd-pane-preview { display: none; }
+
+  /* Lift toasts above the bottom nav rail */
+  .nmd-toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+
+  /* TOC becomes a compact horizontal strip below the sticky header */
+  .nmd-editor.nmd-mode-preview.with-toc {
+    display: flex; flex-direction: column;
+  }
+  .nmd-toc {
+    order: -1;
+    position: sticky; top: 44px; z-index: 4;
+    border-left: none; border-bottom: 1px solid var(--border);
+    padding: 8px 12px; height: auto;
+    overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nmd-toc-label { display: none; }
+  .nmd-toc ul { flex-direction: row; gap: 6px; flex-wrap: nowrap; }
+  .nmd-toc li { flex: 0 0 auto; }
+  .nmd-toc li button {
+    padding: 4px 10px !important;
+    border-left: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11.5px !important;
+    font-weight: 500 !important;
+  }
+
+  /* Home pane */
+  .nmd-home {
+    display: block;
+    height: auto !important;
+    min-height: auto !important;
+    overflow-y: visible !important;
+    overflow-x: hidden;
+    padding: 20px 16px 40px;
+    width: 100%;
+    max-width: 100%;
+  }
+  .nmd-home-header { margin-bottom: 18px; }
+  .nmd-home-header h1 { font-size: 22px; }
+  .nmd-home-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    max-width: 100%;
+    width: 100%;
+  }
+  .nmd-home-card {
+    padding: 14px 14px 12px;
+    border-radius: 8px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .nmd-home-stat-grid { gap: 14px; }
+  .nmd-home-stat-num { font-size: 22px; }
+  .nmd-home-page-title { white-space: normal; }
+
+  /* Weekly tracker: days stack vertically, whole page scrolls */
+  .nmd-tracker {
+    display: block;
+    height: auto !important;
+    min-height: auto !important;
+    overflow-y: visible !important;
+  }
+  .nmd-tracker-header {
+    padding: 12px 16px; gap: 10px; flex-wrap: wrap;
+  }
+  .nmd-tracker-title h1 { font-size: 18px; }
+  .nmd-tracker-spacer { display: none; }
+  .nmd-tracker-nav { flex-wrap: wrap; }
+  .nmd-week-stats { width: 100%; gap: 6px; flex-wrap: wrap; font-size: 11px; }
+  .nmd-view-toggle button { padding: 5px 9px; font-size: 11px; }
+
+  .nmd-week-grid {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none !important;
+    flex: none;
+    gap: 0;
+    border-bottom: none;
+    min-height: 0;
+    margin: 0 12px 16px;
+  }
+  .nmd-day {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    min-height: auto;
+  }
+  .nmd-day-header {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--bg-raised);
+    padding: 10px 14px;
+  }
+  .nmd-day.weekend .nmd-day-header { background: var(--bg-raised); }
+  .nmd-day-body {
+    max-height: none;
+    overflow-y: visible;
+    padding: 10px 12px 14px;
+  }
+  .nmd-day-empty { padding: 14px 10px; }
+
+  /* Modals / dialogs: edge-to-edge with small gutters */
+  .nmd-modal-backdrop { padding-top: 6vh; padding-left: 12px; padding-right: 12px; }
+  .nmd-modal { width: 100%; max-width: 100%; }
+  .nmd-modal-body { padding: 14px 16px; }
+  .nmd-modal-row {
+    flex-direction: column; align-items: stretch; gap: 8px;
+    padding: 12px 0;
+  }
+  .nmd-modal-input { width: 100%; min-width: 0; }
+  .nmd-field-input { width: 100%; font-size: 16px; }
+  .nmd-segmented { flex-wrap: wrap; }
+  .nmd-segmented-btn { min-height: 40px; }
+  .nmd-task-footer,
+  .nmd-task-move { padding: 10px 14px; }
+
+  /* Larger touch targets */
+  .nmd-iconbtn { width: 36px; height: 36px; }
+  .nmd-day-btn { width: 34px; height: 34px; }
+  .nmd-mtg-drawer-add { width: 32px; height: 32px; }
+
+  /* Date picker overlay */
+  .nmd-dp { width: min(280px, calc(100vw - 24px)); }
+
+  /* Auth */
+  .nmd-auth-shell { padding: 24px 16px; gap: 20px; min-height: 100dvh; }
+  .nmd-auth-card { padding: 22px 20px 20px; }
+
+  /* Prevent iOS zoom-on-focus for form inputs */
+  .nmd-title-input,
+  .nmd-add-task-input,
+  .nmd-auth-form input,
+  .nmd-modal-input,
+  .nmd-search input,
+  .nmd-pane-write textarea,
+  .nmd-mtg-input,
+  .nmd-palette input { font-size: 16px; }
+  .nmd-pane-write textarea { font-size: 14.5px; }
+}
+
+@media (max-width: 420px) {
+  .nmd-tracker-title h1 { font-size: 16px; }
+  .nmd-tracker-range { font-size: 11px; }
+  .nmd-home-header h1 { font-size: 20px; }
+  .nmd-week-stats .nmd-pill { padding: 2px 7px; }
+  .nmd-modal-body { padding: 12px 14px; }
+}
+
+/* Calm by request — and still for those who ask for no motion at all */
+@media (prefers-reduced-motion: reduce) {
+  .nmd-boombox.playing .nmd-doodle-spool,
+  .nmd-radio-eq.playing span,
+  .nmd-rail-live { animation: none; }
+}

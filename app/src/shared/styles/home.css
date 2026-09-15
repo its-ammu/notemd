@@ -1,0 +1,315 @@
+/* =========================================================================
+   Home
+   ========================================================================= */
+.nmd-home {
+  height: 100vh; overflow-y: auto;
+  padding: 40px 56px 64px;
+}
+.nmd-home-header { max-width: 1100px; margin: 0 auto 28px; }
+.nmd-home-header h1 {
+  font-size: 28px; font-weight: 600; color: var(--fg1);
+  letter-spacing: -0.02em; margin: 0 0 4px;
+}
+.nmd-home-header p { font-size: 13px; color: var(--fg3); margin: 0; }
+
+.nmd-home-grid {
+  max-width: 1100px; margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 18px;
+}
+.nmd-home-stats { grid-column: 1 / -1; }
+
+.nmd-home-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 18px 20px 16px;
+  box-shadow: var(--shadow-card);
+}
+.nmd-home-card-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.nmd-home-card h2 {
+  font-size: 14px; font-weight: 600; color: var(--fg1);
+  margin: 0; letter-spacing: -0.005em;
+}
+.nmd-home-link {
+  font-size: 12px; color: var(--accent-blue);
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: inherit;
+}
+.nmd-home-link:hover { text-decoration: underline; }
+
+.nmd-home-sub { margin-top: 10px; }
+.nmd-home-sub:first-of-type { margin-top: 0; }
+.nmd-home-sub h3 {
+  font-size: 11px; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--fg4);
+  margin: 0 0 8px;
+}
+.nmd-home-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.nmd-home-empty {
+  font-size: 12.5px; color: var(--fg4);
+  padding: 8px 2px; font-style: italic;
+}
+
+/* Today tasks (page-style rows) */
+.nmd-home-task-row {
+  cursor: pointer;
+  font-family: inherit;
+}
+.nmd-home-task-row.done .nmd-home-page-title {
+  text-decoration: line-through;
+  color: var(--fg4);
+  font-weight: 400;
+}
+.nmd-home-task-row .nmd-home-check {
+  margin-top: 3px;
+}
+.nmd-home-check {
+  width: 15px; height: 15px; border-radius: 3px;
+  border: 1.5px solid var(--border-strong);
+  background: transparent; cursor: pointer; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: transparent; flex-shrink: 0;
+  transition: all 120ms var(--ease);
+}
+.nmd-home-check:hover { border-color: var(--fg3); }
+.nmd-home-check.checked {
+  background: var(--accent-blue); border-color: var(--accent-blue); color: #fff;
+}
+
+.nmd-home-dot-meeting {
+  background: var(--accent-purple, #C89EF4);
+}
+
+/* Recent pages + today links */
+.nmd-home-pages li { list-style: none; }
+.nmd-home-page {
+  width: 100%; display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 8px; border-radius: 6px;
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: inherit;
+  transition: background 120ms var(--ease);
+}
+.nmd-home-page:hover { background: var(--bg-hover); }
+.nmd-home-page .nmd-nb-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  margin-top: 5px; flex-shrink: 0;
+}
+.nmd-home-page-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.nmd-home-page-title {
+  font-size: 13px; font-weight: 500; color: var(--fg1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nmd-home-page-preview {
+  font-size: 11.5px; color: var(--fg4);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nmd-home-page-meta {
+  display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+  font-size: 11px; color: var(--fg4); font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+/* Stats */
+.nmd-home-stat-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 20px;
+}
+.nmd-home-stat {
+  padding: 8px 0;
+}
+.nmd-home-stat-num {
+  font-size: 28px; font-weight: 600; color: var(--fg1);
+  letter-spacing: -0.02em; line-height: 1;
+}
+.nmd-home-stat-num span {
+  font-size: 16px; font-weight: 500; color: var(--fg4); margin-left: 2px;
+}
+.nmd-home-stat-label {
+  font-size: 11px; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--fg4); margin-top: 6px;
+}
+
+.nmd-home-pomo-stats {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 16px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--fg3);
+}
+.nmd-home-pomo-stats svg { flex-shrink: 0; color: var(--fg4); }
+
+/* ── Next-meeting banner — hand-drawn margin-note style ─────────── */
+.nmd-home-next {
+  display: flex; align-items: center; gap: 14px;
+  max-width: 1100px; margin: -12px auto 20px;
+  padding: 12px 18px;
+  border-radius: var(--radius-xl);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+/* a faint accent wash bleeding in from the left, like a highlighter swipe */
+.nmd-home-next::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, var(--accent-tint) 0%, transparent 45%);
+  pointer-events: none;
+}
+.nmd-home-next-doodle {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  color: var(--fg2);
+  position: relative; z-index: 1;
+}
+.nmd-home-next-body {
+  display: flex; flex-direction: column; gap: 1px;
+  min-width: 0; position: relative; z-index: 1;
+}
+.nmd-home-next-quip {
+  font-size: 11px; font-weight: 600; line-height: 1.3;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--accent-blue);
+}
+.nmd-home-next-main {
+  font-size: 14.5px; font-weight: 600; color: var(--fg1);
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+}
+.nmd-home-next-main.muted { font-weight: 400; color: var(--fg3); font-size: 13px; }
+.nmd-home-next-when {
+  font-weight: 400; color: var(--fg3); font-size: 13px;
+}
+.nmd-home-next-ringed {
+  position: relative; display: inline-block;
+  font-family: var(--font-mono); font-weight: 700;
+  color: var(--fg1); font-size: 14px;
+  padding: 1px 6px;
+}
+.nmd-home-next-ringed .nmd-doodle-ring {
+  position: absolute; inset: -5px -7px;
+  width: calc(100% + 14px); height: calc(100% + 10px);
+}
+
+/* ── Doodle motion ───────────────────────────────────────────────── */
+.nmd-doodle { display: block; }
+.nmd-doodle-steam path {
+  animation: doodle-steam 2.6s ease-out infinite;
+}
+.nmd-doodle-steam path:last-child { animation-delay: 1.1s; }
+@keyframes doodle-steam {
+  0%   { transform: translateY(0); opacity: 0.9; }
+  70%  { transform: translateY(-4px); opacity: 0.25; }
+  100% { transform: translateY(-6px); opacity: 0; }
+}
+.nmd-doodle-wiggle {
+  animation: doodle-wiggle 1.6s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+@keyframes doodle-wiggle {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  62% { transform: rotate(-5deg); }
+  70% { transform: rotate(4deg); }
+  78% { transform: rotate(-3deg); }
+  86% { transform: rotate(2deg); }
+}
+.nmd-doodle-ringlines path {
+  animation: doodle-ringlines 1.6s ease-in-out infinite;
+}
+@keyframes doodle-ringlines {
+  0%, 55%, 100% { opacity: 0.25; }
+  70% { opacity: 1; }
+}
+/* ── Greeting accents ───────────────────────────────────────────── */
+.nmd-greet-squiggle {
+  display: block;
+  margin: 2px 0 6px;
+}
+
+/* Mini week calendar */
+.nmd-home-mini-week {
+  display: flex; gap: 4px; margin-bottom: 16px;
+}
+.nmd-home-mini-day {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 8px 4px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--border);
+  cursor: pointer; transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+.nmd-home-mini-day:hover { background: var(--bg-hover); }
+.nmd-home-mini-day.today {
+  background: var(--accent-blue); border-color: var(--accent-blue);
+}
+.nmd-home-mini-day.today .nmd-home-mini-name,
+.nmd-home-mini-day.today .nmd-home-mini-num { color: #fff; }
+.nmd-home-mini-name {
+  font-size: 10px; font-weight: 600; color: var(--fg4);
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.nmd-home-mini-num {
+  font-size: 14px; font-weight: 600; color: var(--fg1);
+  margin-top: 2px;
+}
+.nmd-home-mini-dots {
+  display: flex; gap: 3px; margin-top: 4px; min-height: 6px;
+}
+.nmd-home-mini-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.nmd-home-mini-dot.task { background: var(--accent-blue); }
+.nmd-home-mini-dot.meeting { background: var(--accent-purple, #C89EF4); }
+.nmd-home-mini-day.today .nmd-home-mini-dot { background: rgba(255,255,255,0.7); }
+
+/* Quick add section */
+.nmd-home-quickadd-btns { display: flex; flex-direction: column; gap: 10px; }
+.nmd-home-quickadd-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 8px;
+  background: var(--bg); border: 1px dashed var(--border);
+  color: var(--fg2); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+.nmd-home-quickadd-btn:hover {
+  background: var(--bg-hover); border-color: var(--fg4);
+}
+.nmd-home-quickadd-btn svg { color: var(--fg3); }
+.nmd-home-quickadd-form {
+  display: flex; gap: 8px; align-items: center; flex: 1; min-width: 0;
+}
+.nmd-home-quickadd-form input[type="text"] {
+  flex: 1; min-width: 0; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--fg1);
+  font-size: 13px; outline: none;
+  transition: border-color 120ms var(--ease);
+}
+.nmd-home-quickadd-form input[type="text"]:focus {
+  border-color: var(--accent-blue);
+}
+.nmd-home-quickadd-time {
+  width: 100px; padding: 10px 8px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--fg1);
+  font-size: 13px; outline: none;
+}
+.nmd-home-quickadd-submit {
+  padding: 10px 16px; border-radius: 8px;
+  background: var(--accent-blue); color: #fff;
+  border: none; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background 120ms var(--ease);
+}
+.nmd-home-quickadd-submit:hover { background: var(--accent-deep); }
+.nmd-home-quickadd-cancel {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 8px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--fg3); cursor: pointer;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+.nmd-home-quickadd-cancel:hover { background: var(--bg-hover); color: var(--fg1); }
+
+/* Hidden by default; shown on mobile for the notebooks pane */
+.nmd-mobile-back { display: none; }
+

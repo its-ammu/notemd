@@ -22,6 +22,7 @@ pub fn run() {
   }
 
   builder
+    .plugin(tauri_plugin_opener::init())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -49,6 +50,20 @@ pub fn run() {
         // events before the DOM sees them, which breaks in-app HTML5
         // drag-and-drop (reordering notebooks, pages, and tracker tasks).
         .disable_drag_drop_handler()
+        // External links must not replace the app window. Open them in the
+        // system browser instead. Same-origin (Vite / localhost plugin) stays.
+        .on_navigation(|url| {
+          let host = url.host_str().unwrap_or("");
+          let local = host == "localhost" || host == "127.0.0.1";
+          if local && matches!(url.scheme(), "http" | "https") {
+            return true;
+          }
+          if matches!(url.scheme(), "http" | "https" | "mailto") {
+            let _ = tauri_plugin_opener::open_url(url.as_str(), None::<&str>);
+            return false;
+          }
+          true
+        })
         .build()?;
 
       Ok(())

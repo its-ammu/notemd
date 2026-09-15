@@ -1,0 +1,468 @@
+/* =========================================================================
+   Lofi radio pane — minimal, inky, a little wonky
+   ========================================================================= */
+.nmd-radio {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start;
+  height: 100vh; overflow-y: auto;
+  position: relative;
+  background: var(--bg);
+  color: var(--fg2);
+  padding: 28px 24px 48px;
+}
+/* margin: auto vertically centers when there's room, scrolls when not.
+   Base (narrow): player and rack stacked. Wide screens switch to a centered
+   side-by-side pair (see the min-width rule below). */
+.nmd-radio-stage {
+  position: relative;
+  width: 100%; max-width: 1040px;
+  margin: auto;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 28px;
+}
+.nmd-radio-center {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Cassette rack */
+.nmd-radio-rack {
+  display: flex; flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  align-items: center;
+}
+.nmd-radio-rack-label {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--fg4);
+  text-align: center;
+}
+
+/* Wide: player + rack as a compact, centered pair */
+@media (min-width: 960px) {
+  .nmd-radio-stage {
+    flex-direction: row;
+    align-items: center; justify-content: center;
+    gap: 56px;
+  }
+  .nmd-radio-center { flex: 0 0 auto; width: 420px; }
+  .nmd-radio-rack {
+    flex: 0 0 252px;
+    width: 252px;
+    align-items: stretch;
+    align-self: center;
+    max-height: min(580px, calc(100vh - 96px));
+  }
+  .nmd-radio-rack-label { text-align: left; padding-left: 2px; flex: none; }
+  /* only the tapes scroll; label + add button stay put */
+  .nmd-radio-wall {
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 8px 4px 8px; /* room for hover shift + scrollbar */
+    margin: -4px -4px 0 -8px;
+  }
+  .nmd-radio-cassette-wrap { width: 100%; flex: none; }
+  .nmd-radio-add-btn { align-self: stretch; flex: none; }
+}
+/* In-flow slot the fixed video dock aligns itself to */
+.nmd-radio-screen {
+  width: min(400px, 100%);
+  aspect-ratio: 16 / 9;
+  margin-bottom: 6px;
+}
+
+/* Stray margin notes */
+.nmd-radio-margin-note { position: absolute; color: var(--fg4); opacity: 0.7; }
+.nmd-radio-margin-note.n1 { top: 12px; right: 7%; transform: rotate(9deg); }
+.nmd-radio-margin-note.n2 { bottom: 4%; left: 4%; transform: rotate(-12deg); }
+.nmd-radio-margin-note.n3 { display: none; top: 70px; left: 0; transform: rotate(-3deg); opacity: 0.85; color: var(--fg3); }
+@media (min-width: 1024px) {
+  .nmd-radio-margin-note.n3 { display: block; }
+}
+
+/* Boombox spools spin while playing (calm: slow + linear) */
+.nmd-doodle-spool { transform-box: fill-box; transform-origin: center; }
+.nmd-boombox.playing .nmd-doodle-spool { animation: nmd-spin 2.8s linear infinite; }
+@keyframes nmd-spin { to { transform: rotate(360deg); } }
+
+/* Scribble equalizer */
+.nmd-radio-eq {
+  display: flex; align-items: flex-end; gap: 4px;
+  height: 18px;
+}
+.nmd-radio-eq span {
+  width: 4px; height: 5px;
+  border-radius: 2px;
+  background: var(--accent-blue);
+  opacity: 0.35;
+  transform: rotate(2deg);
+}
+.nmd-radio-eq span:nth-child(even) { transform: rotate(-2deg); }
+.nmd-radio-eq.playing span { opacity: 0.85; animation: nmd-eq 1.7s ease-in-out infinite; }
+.nmd-radio-eq.playing span:nth-child(2) { animation-delay: 0.25s; }
+.nmd-radio-eq.playing span:nth-child(3) { animation-delay: 0.5s; }
+.nmd-radio-eq.playing span:nth-child(4) { animation-delay: 0.15s; }
+.nmd-radio-eq.playing span:nth-child(5) { animation-delay: 0.4s; }
+@keyframes nmd-eq {
+  0%, 100% { height: 5px; }
+  50% { height: 16px; }
+}
+
+.nmd-radio-now { text-align: center; }
+.nmd-radio-station {
+  font-family: var(--font-sans);
+  font-size: 17px; font-weight: 600;
+  color: var(--fg1);
+  letter-spacing: -0.01em;
+}
+.nmd-radio-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg4);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.nmd-radio-status.live { color: var(--accent-blue); }
+
+.nmd-radio-controls {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 2px;
+}
+.nmd-radio-play {
+  width: 46px; height: 46px;
+  border-radius: 50% 46% 50% 48% / 48% 50% 46% 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 2px solid var(--fg2);
+  color: var(--fg1);
+  cursor: pointer;
+  transition: background 120ms var(--ease), transform 120ms var(--ease);
+}
+.nmd-radio-play:hover { background: var(--bg-hover); transform: rotate(-2deg); }
+.nmd-radio-play.loading { cursor: progress; border-color: var(--fg4); }
+.nmd-radio-play.loading:hover { background: transparent; transform: none; }
+.nmd-radio-spinner {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--fg2) 35%, transparent);
+  border-top-color: var(--fg1);
+  animation: nmd-radio-spin 0.7s linear infinite;
+}
+@keyframes nmd-radio-spin { to { transform: rotate(360deg); } }
+.nmd-radio-vol {
+  width: 110px;
+  accent-color: var(--accent-blue);
+}
+.nmd-radio-sleep {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 8px;
+  border: none; border-radius: 6px;
+  background: transparent;
+  color: var(--fg3);
+  font-family: var(--font-mono); font-size: 11px;
+  cursor: pointer;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+.nmd-radio-sleep:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-radio-sleep.on { color: var(--accent-blue); }
+
+.nmd-radio-focus {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 4px;
+  border: none; background: transparent;
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--fg3);
+  cursor: pointer;
+  padding: 4px 8px; border-radius: 4px;
+}
+.nmd-radio-focus:hover { color: var(--fg1); background: var(--bg-hover); }
+
+/* Cassette rack — tapes wrap in rows when stacked, column when beside player */
+.nmd-radio-wall {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+.nmd-radio-cassette-wrap {
+  position: relative;
+  width: 210px;
+  flex: 0 0 210px;
+}
+.nmd-radio-cassette-wrap.custom:hover .nmd-radio-cassette-actions { opacity: 1; }
+.nmd-radio-cassette-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+  z-index: 3;
+}
+.nmd-radio-cassette-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--paper-raised);
+  color: var(--fg2);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.nmd-radio-cassette-act:hover {
+  /* tint layered over a solid surface so the icon stays legible over the art */
+  background: linear-gradient(var(--bg-hover), var(--bg-hover)), var(--paper-raised);
+  border-color: var(--border-strong);
+  color: var(--fg1);
+}
+.nmd-radio-cassette-act.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.nmd-radio-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 7px 11px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--fg3);
+  cursor: pointer;
+  transition: background 120ms var(--ease), color 120ms var(--ease), border-color 120ms var(--ease);
+}
+.nmd-radio-add-btn:hover {
+  color: var(--fg1);
+  background: var(--bg-hover);
+  border-color: var(--fg3);
+}
+.nmd-radio-add-btn svg { flex-shrink: 0; opacity: 0.75; }
+.nmd-radio-form-error {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--danger);
+}
+.nmd-radio-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* A single cassette tape — hand-drawn art image fills the card, the station
+   label sits in the blank top panel of the drawing. */
+.nmd-radio-cassette {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1080 / 720;
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 140ms var(--ease);
+}
+.nmd-radio-cassette-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  /* black-ink PNG → soften to ink tone, lighten on dark themes below */
+  opacity: 0.82;
+}
+[data-theme="dark"] .nmd-radio-cassette-art { filter: invert(1); opacity: 0.7; }
+.nmd-radio-cassette:hover { transform: translateX(-6px) rotate(-0.6deg); }
+.nmd-radio-cassette:hover .nmd-radio-cassette-art { opacity: 1; }
+[data-theme="dark"] .nmd-radio-cassette:hover .nmd-radio-cassette-art { opacity: 0.9; }
+/* active tape: hand-drawn scribble ring + full-strength art */
+.nmd-radio-cassette-ring {
+  position: absolute;
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  fill: none;
+  stroke: var(--accent-blue);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms var(--ease);
+}
+.nmd-radio-cassette.active .nmd-radio-cassette-ring { opacity: 0.9; }
+.nmd-radio-cassette.active .nmd-radio-cassette-art { opacity: 1; }
+
+/* label text floats in the blank top panel of the cassette drawing */
+.nmd-radio-cassette-label {
+  position: absolute;
+  top: 19%;
+  left: 15%;
+  right: 14%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  pointer-events: none;
+}
+.nmd-radio-cassette-name {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 9px; font-weight: 700;
+  color: var(--fg1);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nmd-radio-cassette-by {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 6.5px;
+  color: var(--fg3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nmd-radio-credit {
+  margin-top: 26px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg4);
+}
+.nmd-radio-credit a { color: var(--fg3); }
+
+/* Live dot on the rail button while the radio plays */
+.nmd-rail-live {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  animation: nmd-live 2.4s ease-in-out infinite;
+}
+@keyframes nmd-live {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* The YouTube "TV" — one persistent framed player.
+   .stage: pinned above the radio page content.
+   .mini:  corner mini-player while playing on other tabs (click = open radio).
+   .off:   parked invisibly (nothing playing). Never display:none — that can
+   interrupt the iframe. */
+.nmd-yt-dock {
+  position: fixed;
+  z-index: 90;
+  background: #0d0f14;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9; /* fallback; stage mode gets exact inline dimensions */
+  box-shadow: var(--shadow-float);
+}
+.nmd-yt-dock::before {
+  /* washi-tape strip, same as the station posters */
+  content: "";
+  position: absolute;
+  top: -10px; left: 50%;
+  width: 44px; height: 14px;
+  transform: translateX(-50%) rotate(-2.5deg);
+  background: var(--accent-tint-strong);
+  border-radius: 2px;
+  z-index: 3;
+}
+/* hand-drawn outline hugging the screen */
+.nmd-yt-scribble {
+  position: absolute;
+  inset: -7px;
+  width: calc(100% + 14px);
+  height: calc(100% + 14px);
+  color: var(--fg2);
+  pointer-events: none;
+  z-index: 2;
+}
+.nmd-yt-dock #nmd-yt-player {
+  position: static;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 7px;
+  background: #000;
+}
+.nmd-yt-dock.stage {
+  top: 84px;
+  /* center within the pane, not the viewport (rail is 52px wide) */
+  left: calc(50% + 26px);
+  transform: translateX(-50%);
+  width: min(400px, calc(100vw - 92px));
+}
+.nmd-yt-dock.mini {
+  bottom: 18px; right: 18px;
+  width: 248px;
+  cursor: pointer;
+  transition: transform 140ms var(--ease);
+}
+.nmd-yt-dock.mini:hover { transform: rotate(-1deg) scale(1.02); }
+.nmd-yt-dock.mini::after {
+  /* swallow clicks so the whole card opens the radio tab */
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.nmd-yt-dock.off {
+  visibility: hidden;
+  pointer-events: none;
+  bottom: 18px; right: 18px;
+  width: 248px;
+}
+
+/* Mobile tweaks */
+@media (max-width: 720px) {
+  .nmd-radio {
+    height: auto; min-height: calc(100vh - 60px);
+    padding: 24px 16px 40px;
+  }
+  .nmd-yt-dock.mini,
+  .nmd-yt-dock.off {
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+    right: 12px;
+    width: 200px;
+  }
+  .nmd-radio-margin-note { display: none; }
+  /* Two tapes per row on phones; rack is already stacked under the player */
+  .nmd-radio-cassette-wrap {
+    width: calc(50% - 5px);
+    flex: 0 0 calc(50% - 5px);
+  }
+  .nmd-radio-add-btn { align-self: center; margin-top: 6px; }
+  .nmd-radio-cassette-actions { opacity: 1; }
+  .nmd-radio-credit { margin-top: 18px; }
+}
+
