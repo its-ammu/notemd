@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PRIO } from '../utils/constants';
 import TaskContextMenu from './TaskContextMenu';
 
-export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging, onEdit, onStartPomodoro, onDuplicate }) {
+export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging, onEdit, onStartPomodoro, onDuplicate, onTaskDragOver, onTaskDrop, dropEdge }) {
   const doneCount = task.subtasks.filter(s => s.done).length;
   const hasSubs = task.subtasks.length > 0;
   const toggleDone = (e) => {
@@ -24,7 +24,8 @@ export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging,
   };
 
   const [menuPos, setMenuPos] = useState(null);
-  const cls = 'nmd-task ' + PRIO[task.priority || 'none'].cls + (task.done ? ' done' : '') + (dragging ? ' dragging' : '');
+  const cls = 'nmd-task ' + PRIO[task.priority || 'none'].cls + (task.done ? ' done' : '') + (dragging ? ' dragging' : '')
+    + (dropEdge === 'top' ? ' drop-before' : dropEdge === 'bottom' ? ' drop-after' : '');
 
   return (
     <div
@@ -36,6 +37,8 @@ export default function Task({ task, onUpdate, onDragStart, onDragEnd, dragging,
         onDragStart(task.id);
       }}
       onDragEnd={onDragEnd}
+      onDragOver={onTaskDragOver}
+      onDrop={onTaskDrop}
       onClick={() => onEdit(task.id)}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMenuPos({ x: e.clientX, y: e.clientY }); }}
       style={{ cursor: 'pointer' }}

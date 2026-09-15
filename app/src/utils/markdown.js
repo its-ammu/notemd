@@ -7,6 +7,7 @@ function stripInlineMarkdown(s) {
   return s
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/~~([^~]+)~~/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');

@@ -23,6 +23,17 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
   const [addText, setAddText] = useState('');
   const [copied, setCopied] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [dropInfo, setDropInfo] = useState(null); // { id, edge: 'top' | 'bottom' }
+
+  // Where a task dropped onto `targetIdx` should land: before it (top half) or
+  // after it (bottom half). Returns the id of the task to insert in front of,
+  // or null for the end of the day.
+  const dropTargetBeforeId = (e, targetIdx) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    const insertIdx = after ? targetIdx + 1 : targetIdx;
+    return tasks[insertIdx] ? tasks[insertIdx].id : null;
+  };
 
   const submitAdd = () => {
     const t = addText.trim();
@@ -76,12 +87,13 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
     <div
       className={'nmd-day' + (isToday ? ' today' : '') + (isWeekend ? ' weekend' : '') + (dragOver ? ' drop-target' : '')}
       onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
+      onDragLeave={() => { setDragOver(false); setDropInfo(null); }}
       onDrop={e => {
         e.preventDefault();
         setDragOver(false);
+        setDropInfo(null);
         const id = e.dataTransfer.getData('text/plain');
-        if (id) onDropTask(id);
+        if (id) onDropTask(id, null);
       }}
     >
       <div className="nmd-day-header">
@@ -90,6 +102,20 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
           <span className="nmd-day-num">{dateNum}</span>
         </div>
         <div className="nmd-day-actions">
+          <button
+            className={'nmd-day-btn' + (copied ? ' copied' : '')}
+            title="Copy entries"
+            onClick={copyDay}
+          >
+            {copied ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12l5 5L20 6" /></svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="8" y="8" width="12" height="12" rx="2" />
+                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+              </svg>
+            )}
+          </button>
           {meetingCount > 0 && (
             <span className="nmd-day-mtg-chip" title={`${meetingCount} meeting${meetingCount !== 1 ? 's' : ''}`}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -99,20 +125,6 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
               {meetingCount}
             </span>
           )}
-          <button
-            className={'nmd-day-btn' + (copied ? ' copied' : '')}
-            title="Copy entries"
-            onClick={copyDay}
-          >
-            {copied ? (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12l5 5L20 6" /></svg>
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="8" y="8" width="12" height="12" rx="2" />
-                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-              </svg>
-            )}
-          </button>
         </div>
       </div>
 
@@ -120,14 +132,32 @@ export default function DayColumn({ date, tasks, meetings, isToday, isWeekend, o
         {tasks.length === 0 && !adding && (
           <div className="nmd-day-empty">—</div>
         )}
-        {tasks.map(t => (
+        {tasks.map((t, idx) => (
           <Task
             key={t.id}
             task={t}
             onUpdate={(patch) => onUpdateTask(t.id, patch)}
             onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
+            onDragEnd={() => { onDragEnd(); setDropInfo(null); }}
             dragging={draggingId === t.id}
+            dropEdge={dropInfo && dropInfo.id === t.id ? dropInfo.edge : null}
+            onTaskDragOver={e => {
+              if (!draggingId) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOver(false);
+              const rect = e.currentTarget.getBoundingClientRect();
+              const after = e.clientY > rect.top + rect.height / 2;
+              setDropInfo({ id: t.id, edge: after ? 'bottom' : 'top' });
+            }}
+            onTaskDrop={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOver(false);
+              setDropInfo(null);
+              const id = e.dataTransfer.getData('text/plain');
+              if (id) onDropTask(id, dropTargetBeforeId(e, idx));
+            }}
             onEdit={onEditTask}
             onStartPomodoro={onStartPomodoro}
             onDuplicate={onDuplicate}

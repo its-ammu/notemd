@@ -1,5 +1,12 @@
 .claude/*
 CLAUDE.md
 secret
-supabase*
+supabase/.temp
 node_modules
+
+# Personal planning docs, not for the public repo
+docs/encryption-plan.md
+docs/encryption-setup.md
+
+# Per-contributor mobile config (real Supabase project values)
+mobile/notemd/notemd/Config.swift

@@ -90,7 +90,7 @@ function resetIfDetached() {
   }
 }
 
-function ensurePlayerSingleton() {
+function ensurePlayerSingleton(initialVideoId) {
   resetIfDetached();
   // Already have a live, ready player (e.g. a slow init that finished after the
   // timeout, or a warm pre-mounted one) — use it directly.
@@ -138,6 +138,11 @@ function ensurePlayerSingleton() {
         // to load ("network connection was lost") and PLAYING is never reached.
         // The privacy win isn't worth a stream that won't play; keep this host.
         host: 'https://www.youtube.com',
+        // Cue the current station up front so the iframe has a valid video even
+        // before our play button loads one. Without this the embed holds an
+        // empty video and YouTube's own play button/logo throws "error 2:
+        // invalid video id".
+        videoId: initialVideoId || undefined,
         width: '100%',
         height: '100%',
         playerVars: {
@@ -251,7 +256,7 @@ export function useRadio({ onError } = {}) {
     if (playerIsAttached()) player.setVolume(Math.round(volume * 100));
   }, [volume]);
 
-  const ensurePlayer = () => ensurePlayerSingleton();
+  const ensurePlayer = () => ensurePlayerSingleton(stationVideoId(station));
 
   const play = (st) => {
     const target = st || station;

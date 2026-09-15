@@ -581,6 +581,41 @@ const refChips = ViewPlugin.fromClass(
   }
 );
 
+/* `__text__` means underline in NoteMD (`**` stays bold). The Lezer markdown
+   parser tags both as StrongEmphasis, so the highlight style can't tell them
+   apart — decorate the underscore form directly instead. */
+const UNDERLINE_RE = /__([^_\n]+)__/g;
+const underlineMark = Decoration.mark({ class: 'nmd-cm-underline' });
+
+function buildUnderlineDecorations(view) {
+  const builder = new RangeSetBuilder();
+  for (const { from, to } of view.visibleRanges) {
+    let pos = from;
+    while (pos <= to) {
+      const line = view.state.doc.lineAt(pos);
+      UNDERLINE_RE.lastIndex = 0;
+      let m;
+      while ((m = UNDERLINE_RE.exec(line.text))) {
+        builder.add(line.from + m.index, line.from + m.index + m[0].length, underlineMark);
+      }
+      pos = line.to + 1;
+    }
+  }
+  return builder.finish();
+}
+
+const underlineMarks = ViewPlugin.fromClass(
+  class {
+    constructor(view) { this.decorations = buildUnderlineDecorations(view); }
+    update(update) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildUnderlineDecorations(update.view);
+      }
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
+
 export default function MarkdownEditor({ value, onChange, placeholder, notebooks = [] }) {
   const containerRef = useRef(null);
   const viewRef = useRef(null);
@@ -628,6 +663,7 @@ export default function MarkdownEditor({ value, onChange, placeholder, notebooks
           { key: 'Tab', run: listIndent, shift: listOutdent },
           { key: 'Mod-b', run: wrapSelection('**'), preventDefault: true },
           { key: 'Mod-i', run: wrapSelection('*'), preventDefault: true },
+          { key: 'Mod-u', run: wrapSelection('__'), preventDefault: true },
           { key: 'Mod-e', run: wrapSelection('`'), preventDefault: true },
           { key: 'Mod-k', run: insertLink, preventDefault: true },
           ...completionKeymap,
@@ -647,6 +683,7 @@ export default function MarkdownEditor({ value, onChange, placeholder, notebooks
         indentUnit.of('    '), // 4 spaces — enough for nested lists to render as nested
         syntaxHighlighting(mdHighlight),
         refChips, // render image/page-link markdown as compact styled chips
+        underlineMarks, // `__text__` reads as underline, not bold
         mdTheme,
         updateListener,
         EditorView.lineWrapping,
@@ -710,6 +747,7 @@ export default function MarkdownEditor({ value, onChange, placeholder, notebooks
         <div className="nmd-md-toolbar">
           {tbBtn(<TbIcon><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></TbIcon>, 'Bold (⌘B)', () => run(wrapSelection('**')))}
           {tbBtn(<TbIcon><line x1="19" y1="4" x2="10" y2="4" /><line x1="14" y1="20" x2="5" y2="20" /><line x1="15" y1="4" x2="9" y2="20" /></TbIcon>, 'Italic (⌘I)', () => run(wrapSelection('*')))}
+          {tbBtn(<TbIcon><path d="M6 4v6a6 6 0 0 0 12 0V4" /><line x1="4" y1="20" x2="20" y2="20" /></TbIcon>, 'Underline (⌘U)', () => run(wrapSelection('__')))}
           {tbBtn(<TbIcon><path d="m16 18 6-6-6-6" /><path d="m8 6-6 6 6 6" /></TbIcon>, 'Inline code (⌘E)', () => run(wrapSelection('`')))}
           <span className="nmd-md-tb-sep" />
           {tbBtn(<TbIcon><path d="M4 12h8" /><path d="M4 18V6" /><path d="M12 18V6" /><path d="m17 12 3-2v8" /></TbIcon>, 'Heading 1', () => run(setHeadingLevel(1)))}

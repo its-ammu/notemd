@@ -233,6 +233,14 @@
   border-bottom-color: var(--link);
 }
 
+/* `__text__` — underline, kept visually distinct from links (which carry
+   --link color and reveal their underline on hover). */
+.prose u {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
 .prose code, .code-inline {
   font-family: var(--font-mono);
   font-size: 0.92em;

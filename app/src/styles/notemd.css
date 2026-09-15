@@ -88,6 +88,12 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
   font: inherit; font-size: 12px; color: var(--accent-blue); cursor: pointer;
 }
 .nmd-auth-toggle button:hover { text-decoration: underline; }
+.nmd-auth-forgot { text-align: right; margin-top: -6px; }
+.nmd-auth-forgot button {
+  background: none; border: none; padding: 0;
+  font: inherit; font-size: 12px; color: var(--accent-blue); cursor: pointer;
+}
+.nmd-auth-forgot button:hover { text-decoration: underline; }
 
 .nmd-app { --nb-accent: #5167F4; }
 
@@ -123,6 +129,16 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 .nmd-page-row.sel { background: var(--bg-press); }
 .nmd-page-row.sel .nmd-page-title { color: var(--fg1); }
 .nmd-page-row-main { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+
+/* Drag-and-drop reordering feedback */
+.nmd-nb-row.nmd-dragging,
+.nmd-page-row.nmd-dragging { opacity: 0.4; }
+.nmd-nb-row.nmd-drag-over,
+.nmd-page-row.nmd-drag-over {
+  background: var(--accent-tint-strong);
+  outline: 1px dashed var(--accent-blue);
+  outline-offset: -2px;
+}
 .nmd-page-title { font-size: 12.5px; color: var(--fg2); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nmd-page-meta { font-size: 10.5px; color: var(--fg4); font-family: var(--font-mono); flex-shrink: 0; }
 .nmd-page-snippet {
@@ -419,7 +435,7 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 
 /* Header view-mode toggle — recessed gray well, active segment floats white */
 .nmd-view-toggle {
-  display: inline-flex; background: var(--bg);
+  display: inline-flex; flex-shrink: 0; background: var(--bg);
   border: 1px solid transparent;
   border-radius: var(--radius-md); padding: 2px; gap: 2px;
 }
@@ -434,7 +450,7 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 
 /* Notebook accent strip in header */
 .nmd-nb-strip { width: 3px; align-self: stretch; background: var(--nb-accent); border-radius: 2px; margin-right: 4px; }
-.nmd-nb-context { font-size: 12px; color: var(--fg3); font-family: var(--font-mono); }
+.nmd-nb-context { font-size: 12px; color: var(--fg3); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; flex-shrink: 0; }
 .nmd-nb-context b { color: var(--fg2); font-weight: 500; }
 
 /* Paper textures */
@@ -458,7 +474,7 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 
 /* Paper-style picker */
 .nmd-paper-picker {
-  display: inline-flex; gap: 2px; background: var(--bg);
+  display: inline-flex; flex-shrink: 0; gap: 2px; background: var(--bg);
   border: 1px solid transparent;
   border-radius: var(--radius-md); padding: 2px;
 }
@@ -540,19 +556,30 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
 }
 .nmd-iconbtn {
   display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
   width: 28px; height: 28px; border-radius: 4px;
   background: transparent; border: none; color: var(--fg3);
   cursor: pointer; transition: background 120ms var(--ease), color 120ms var(--ease);
 }
 .nmd-iconbtn:hover { background: var(--bg-hover); color: var(--fg1); }
 .nmd-title-input {
-  flex: 1; border: none; background: transparent; outline: none;
+  flex: 1; min-width: 40px; width: 0; border: none; background: transparent; outline: none;
   font-family: var(--font-sans); font-size: 17px; font-weight: 600;
   color: var(--fg1); letter-spacing: -0.01em;
 }
 .nmd-title-input::placeholder { color: var(--fg4); font-weight: 500; }
-.nmd-saved { font-size: 12px; color: var(--fg3); font-family: var(--font-mono); }
+.nmd-saved { font-size: 12px; color: var(--fg3); font-family: var(--font-mono); white-space: nowrap; }
 .nmd-saved.error { color: var(--danger); }
+
+/* Narrow windows: drop non-essential header controls so the title keeps room
+   and the action buttons never get pushed past the right edge. */
+@media (max-width: 900px) {
+  .nmd-header .nmd-paper-picker { display: none; }
+  .nmd-nb-context { max-width: 110px; }
+}
+@media (max-width: 720px) {
+  .nmd-header .nmd-saved:not(.error) { display: none; }
+}
 
 /* Tags bar */
 .nmd-tags-bar {
@@ -736,6 +763,20 @@ html, body { margin:0; padding:0; background: var(--bg); font-family: var(--font
   color: var(--fg2);
   background: var(--bg-hover);
   cursor: default;
+}
+
+/* `__text__` in the source editor — the markdown parser tags it the same as
+   `**bold**`, so this class is applied by a decoration instead. */
+.nmd-cm-underline {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+/* The strong-emphasis highlight may wrap or be wrapped by our mark, so beat its
+   font-weight from both sides. */
+.nmd-cm-underline,
+.nmd-cm-underline span {
+  font-weight: 400;
 }
 
 /* Inline reference chips inside the source editor (image / page links).

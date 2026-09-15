@@ -12,6 +12,19 @@ import NotebookBoard from './NotebookBoard';
 import FixedContextMenu from './FixedContextMenu';
 import { HelpIcon } from './Tooltip';
 
+// Base URL for public share links. In the desktop/native app the origin is
+// localhost/tauri, so prefer the configured public URL; fall back to the
+// current origin for the deployed web app.
+function shareBase() {
+  const configured = import.meta.env.VITE_PUBLIC_BASE_URL;
+  if (configured) return configured.replace(/\/+$/, '') + '/';
+  const { origin, pathname } = window.location;
+  if (/^(tauri:|https?:\/\/(localhost|127\.0\.0\.1|\[::1\]))/.test(origin)) {
+    return 'https://notemd.littlebuilds.dev/';
+  }
+  return `${origin}${pathname}`;
+}
+
 // Long-press handlers for mobile equivalent of right-click.
 // Returns props to spread on a touchable element. The handler is called
 // with { clientX, clientY } when the touch holds still for ~500ms.
@@ -162,7 +175,13 @@ function makeSnippet(body, q) {
 }
 
 export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setActiveSel, saving, syncError, tasksByDate, meetingsByDate, onOpenTracker, showToast }) {
-  const [openIds, setOpenIds] = useState(() => new Set(notebooks.map(n => n.id).slice(0, 3)));
+  const [openIds, setOpenIds] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('nmd_nb_open') || 'null');
+      if (Array.isArray(saved)) return new Set(saved);
+    } catch { /* ignore */ }
+    return new Set(notebooks.map(n => n.id).slice(0, 3));
+  });
   const [query, setQuery] = useState('');
   const [tagFilters, setTagFilters] = useState([]);
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
@@ -186,6 +205,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
 
   useEffect(() => { localStorage.setItem('nmd_view', view); }, [view]);
   useEffect(() => { localStorage.setItem('nmd_nb_board', boardOpen ? 'on' : 'off'); }, [boardOpen]);
+  useEffect(() => { localStorage.setItem('nmd_nb_open', JSON.stringify([...openIds])); }, [openIds]);
   useEffect(() => {
     document.body.classList.toggle('nmd-focus', focusMode);
     return () => document.body.classList.remove('nmd-focus');
@@ -223,6 +243,38 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
 
   const toggleNb = (id) => {
     setOpenIds(s => { const ns = new Set(s); if (ns.has(id)) ns.delete(id); else ns.add(id); return ns; });
+  };
+
+  // Drag-and-drop reordering. Row order in the client arrays is what sync
+  // flattens into the `position` column, so reordering here persists.
+  const [dragItem, setDragItem] = useState(null); // { type:'nb', id } | { type:'page', nbId, id }
+  const [dragOverId, setDragOverId] = useState(null);
+
+  const moveNotebook = (fromId, toId) => {
+    if (fromId === toId) return;
+    setNotebooks(nbs => {
+      const from = nbs.findIndex(n => n.id === fromId);
+      const to = nbs.findIndex(n => n.id === toId);
+      if (from < 0 || to < 0) return nbs;
+      const next = nbs.slice();
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const movePage = (nbId, fromId, toId) => {
+    if (fromId === toId) return;
+    setNotebooks(nbs => nbs.map(n => {
+      if (n.id !== nbId) return n;
+      const pages = n.pages.slice();
+      const from = pages.findIndex(p => p.id === fromId);
+      const to = pages.findIndex(p => p.id === toId);
+      if (from < 0 || to < 0) return n;
+      const [moved] = pages.splice(from, 1);
+      pages.splice(to, 0, moved);
+      return { ...n, pages };
+    }));
   };
 
   const updateNb = (id, patch) => setNotebooks(nbs => nbs.map(nb => nb.id === id ? { ...nb, ...patch } : nb));
@@ -297,7 +349,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
   };
 
   const shareUrl = activePage?.publicToken
-    ? `${window.location.origin}${window.location.pathname}?p=${activePage.publicToken}`
+    ? `${shareBase()}?p=${activePage.publicToken}`
     : '';
 
   const copyShareLink = async () => {
@@ -558,7 +610,18 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
             return (
               <div key={nb.id}>
                 <button
-                  className="nmd-nb-row"
+                  className={'nmd-nb-row'
+                    + (dragItem?.type === 'nb' && dragOverId === nb.id && dragItem.id !== nb.id ? ' nmd-drag-over' : '')
+                    + (dragItem?.type === 'nb' && dragItem.id === nb.id ? ' nmd-dragging' : '')}
+                  draggable={!hasFilter && renamingNbId !== nb.id}
+                  onDragStart={e => { setDragItem({ type: 'nb', id: nb.id }); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragOver={e => { if (dragItem?.type === 'nb') { e.preventDefault(); setDragOverId(nb.id); } }}
+                  onDragLeave={() => setDragOverId(id => (id === nb.id ? null : id))}
+                  onDrop={e => {
+                    if (dragItem?.type === 'nb') { e.preventDefault(); moveNotebook(dragItem.id, nb.id); }
+                    setDragItem(null); setDragOverId(null);
+                  }}
+                  onDragEnd={() => { setDragItem(null); setDragOverId(null); }}
                   onClick={() => {
                     if (longPressRef.current?.fired) { longPressRef.current = null; return; }
                     toggleNb(nb.id);
@@ -605,7 +668,18 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                       return (
                         <button
                           key={p.id}
-                          className={'nmd-page-row' + (p.id === activePage?.id ? ' sel' : '') + (snippet ? ' with-snippet' : '')}
+                          className={'nmd-page-row' + (p.id === activePage?.id ? ' sel' : '') + (snippet ? ' with-snippet' : '')
+                            + (dragItem?.type === 'page' && dragItem.nbId === nb.id && dragOverId === p.id && dragItem.id !== p.id ? ' nmd-drag-over' : '')
+                            + (dragItem?.type === 'page' && dragItem.id === p.id ? ' nmd-dragging' : '')}
+                          draggable={!hasFilter}
+                          onDragStart={e => { e.stopPropagation(); setDragItem({ type: 'page', nbId: nb.id, id: p.id }); e.dataTransfer.effectAllowed = 'move'; }}
+                          onDragOver={e => { if (dragItem?.type === 'page' && dragItem.nbId === nb.id) { e.preventDefault(); e.stopPropagation(); setDragOverId(p.id); } }}
+                          onDragLeave={() => setDragOverId(id => (id === p.id ? null : id))}
+                          onDrop={e => {
+                            if (dragItem?.type === 'page' && dragItem.nbId === nb.id) { e.preventDefault(); e.stopPropagation(); movePage(nb.id, dragItem.id, p.id); }
+                            setDragItem(null); setDragOverId(null);
+                          }}
+                          onDragEnd={() => { setDragItem(null); setDragOverId(null); }}
                           onClick={() => {
                             if (longPressRef.current?.fired) { longPressRef.current = null; return; }
                             openPage(nb.id, p.id);

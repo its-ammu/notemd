@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import NotebooksPane from './components/NotebooksPane';
 import WeeklyTracker from './components/WeeklyTracker';
 import HomePane from './components/HomePane';
-import AuthScreen from './components/AuthScreen';
+import AuthScreen, { ResetPasswordScreen } from './components/AuthScreen';
 import PomodoroTimer from './components/PomodoroTimer';
 import RadioPane from './components/RadioPane';
 import { useRadio } from './hooks/useRadio';
@@ -28,7 +28,10 @@ function RailBtn({ label, children, active, onClick }) {
 }
 
 function App() {
-  const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
+  const {
+    user, loading: authLoading, signIn, signUp, signOut,
+    resetPassword, updatePassword, passwordRecovery, clearPasswordRecovery,
+  } = useAuth();
   const {
     notebooks, setNotebooks,
     tasksByDate, setTasksByDate,
@@ -158,8 +161,12 @@ function App() {
     );
   }
 
+  if (user && passwordRecovery) {
+    return <ResetPasswordScreen onUpdatePassword={updatePassword} onDone={clearPasswordRecovery} />;
+  }
+
   if (!user) {
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} />;
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onResetPassword={resetPassword} />;
   }
 
   if (!loaded) {

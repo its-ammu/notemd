@@ -244,12 +244,12 @@ body.nmd-focus .nmd-sidebar { display: none; }
   color: var(--accent-blue);
   font-weight: 600;
 }
-.nmd-day-actions { display: flex; gap: 2px; align-items: center; }
+.nmd-day-actions { display: flex; gap: 4px; align-items: center; }
 .nmd-day-btn {
-  width: 22px; height: 22px; border-radius: 4px;
+  width: 28px; height: 28px; border-radius: 6px;
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; cursor: pointer;
-  color: var(--fg4);
+  color: var(--fg3);
   opacity: 0;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }
@@ -300,6 +300,18 @@ body.nmd-focus .nmd-sidebar { display: none; }
   text-decoration-color: var(--fg4);
 }
 .nmd-task.done { opacity: 0.7; }
+/* Insertion indicator while reordering tasks within a day */
+.nmd-task.drop-before::before,
+.nmd-task.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--accent-blue);
+  pointer-events: none;
+}
+.nmd-task.drop-before::before { top: -1px; }
+.nmd-task.drop-after::after { bottom: -1px; }
 
 /* Priority chip — wraps just the title text, not the full row */
 .nmd-task.prio-high .nmd-task-title-text,
@@ -1207,14 +1219,14 @@ body.nmd-focus .nmd-sidebar { display: none; }
   letter-spacing: 0;
 }
 .nmd-mtg-drawer-add {
-  width: 20px; height: 20px; border-radius: 4px;
+  width: 26px; height: 26px; border-radius: 6px;
   display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; border: none; cursor: pointer;
-  color: var(--fg4);
+  background: var(--bg-raised); border: 1px solid var(--border); cursor: pointer;
+  color: var(--fg2);
   opacity: 1;
   transition: all var(--dur-fast) var(--ease);
 }
-.nmd-mtg-drawer-add:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-mtg-drawer-add:hover { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
 
 .nmd-mtg-drawer-empty {
   font-size: 11px; color: var(--fg5);
@@ -1852,7 +1864,8 @@ textarea.nmd-mtg-input {
 
   /* Larger touch targets */
   .nmd-iconbtn { width: 36px; height: 36px; }
-  .nmd-day-btn { width: 30px; height: 30px; }
+  .nmd-day-btn { width: 34px; height: 34px; }
+  .nmd-mtg-drawer-add { width: 32px; height: 32px; }
 
   /* Date picker overlay */
   .nmd-dp { width: min(280px, calc(100vw - 24px)); }

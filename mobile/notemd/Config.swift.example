@@ -1,0 +1,25 @@
+//
+//  Config.swift.example
+//  notemd
+//
+//  Copy this file to notemd/notemd/Config.swift (gitignored) and fill in
+//  your own Supabase project's values. Config.swift is not tracked so each
+//  contributor points the app at their own project instead of a shared one.
+//
+//  Lives one level up from notemd/notemd/ (outside the Xcode target's
+//  synchronized folder) on purpose: Xcode's synchronized-folder build phase
+//  treats every file inside that folder as build input regardless of
+//  extension, so a copy sitting next to Config.swift errors with either
+//  "Invalid redeclaration of Config" (as .swift) or "Unexpected input file"
+//  (as any other extension).
+
+import Foundation
+
+enum Config {
+    static let supabaseURL = URL(string: "https://your-project-ref.supabase.co")!
+    static let supabaseAnonKey = "your-anon-key"
+
+    // App Group — configured now so the future widget extension can share the
+    // cached snapshot + keychain key. Set the matching entitlement in Xcode.
+    static let appGroup = "group.com.yourcompany.notemd"
+}

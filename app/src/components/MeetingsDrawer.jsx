@@ -64,7 +64,7 @@ export default function MeetingsDrawer({ days, getMeetings, onAddMeeting, onEdit
                     onClick={() => onAddMeeting(key)}
                     aria-label="Add meeting"
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 5v14M5 12h14" />
                     </svg>
                   </button>

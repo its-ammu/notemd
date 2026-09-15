@@ -96,18 +96,35 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     });
   };
 
-  const moveTask = (taskId, toDateKey) => {
+  // Move a task to another day, or reorder within the same day. `beforeId` is
+  // the id of the task the dragged one should land in front of; null means
+  // append to the end of the target day.
+  const moveTask = (taskId, toDateKey, beforeId = null) => {
+    if (beforeId === taskId) return;
     let task = null, fromKey = null;
     for (const [k, list] of Object.entries(tasksByDate)) {
       const f = list.find(t => t.id === taskId);
       if (f) { task = f; fromKey = k; break; }
     }
-    if (!task || fromKey === toDateKey) return;
+    if (!task) return;
+    // Same day + no explicit target = drop onto empty space, nothing to reorder.
+    if (fromKey === toDateKey && beforeId == null) return;
     setTasksByDate(prev => {
       const next = { ...prev };
       const fromList = (next[fromKey] || []).filter(t => t.id !== taskId);
-      if (fromList.length === 0) delete next[fromKey]; else next[fromKey] = fromList;
-      next[toDateKey] = [...(next[toDateKey] || []), task];
+      if (fromKey === toDateKey) {
+        let idx = beforeId ? fromList.findIndex(t => t.id === beforeId) : fromList.length;
+        if (idx < 0) idx = fromList.length;
+        fromList.splice(idx, 0, task);
+        next[toDateKey] = fromList;
+      } else {
+        if (fromList.length === 0) delete next[fromKey]; else next[fromKey] = fromList;
+        const toList = [...(next[toDateKey] || [])];
+        let idx = beforeId ? toList.findIndex(t => t.id === beforeId) : toList.length;
+        if (idx < 0) idx = toList.length;
+        toList.splice(idx, 0, task);
+        next[toDateKey] = toList;
+      }
       return next;
     });
   };
@@ -299,7 +316,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               isWeekend={dow === 0 || dow === 6}
               onAddTask={(title) => addTask(key, title)}
               onUpdateTask={(id, patch) => updateTask(key, id, patch)}
-              onDropTask={(id) => moveTask(id, key)}
+              onDropTask={(id, beforeId) => moveTask(id, key, beforeId)}
               onDragStart={setDraggingId}
               onDragEnd={() => setDraggingId(null)}
               draggingId={draggingId}
