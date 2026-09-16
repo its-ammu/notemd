@@ -199,6 +199,17 @@ final class TrackerStore {
         schedulePush()
     }
 
+    func moveMeeting(_ id: String, from fromKey: String, to toKey: String) {
+        guard fromKey != toKey else { return }
+        var list = meetingsByDate[fromKey] ?? []
+        guard let idx = list.firstIndex(where: { $0.id == id }) else { return }
+        let meeting = list.remove(at: idx)
+        if list.isEmpty { meetingsByDate.removeValue(forKey: fromKey) }
+        else { meetingsByDate[fromKey] = list }
+        meetingsByDate[toKey, default: []].append(meeting)
+        schedulePush()
+    }
+
     /// Edits to a recurring instance write to the source meeting.
     func updateRecurringSource(_ sourceDate: String, sourceId: String, _ patch: (inout Meeting) -> Void) {
         guard var list = meetingsByDate[sourceDate] else { return }

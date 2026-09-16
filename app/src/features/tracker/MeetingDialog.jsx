@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import PageLinkPicker from '../../shared/components/PageLinkPicker';
+import { addDays, fmtDate } from '../../shared/utils/time';
+import DatePicker from './DatePicker';
 
 const REPEAT_OPTIONS = [
   { value: 'none', label: 'No repeat' },
@@ -8,24 +11,108 @@ const REPEAT_OPTIONS = [
   { value: 'biweekly', label: 'Every 2 weeks' },
 ];
 
-export default function MeetingDialog({ meeting, onUpdate, onDelete, onDeleteOccurrence, onDeleteFuture, onClose, notebooks, onNavigateToPage }) {
+function formatDayLabel(key) {
+  if (!key) return 'Pick a day';
+  const d = new Date(key + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function lastDayFromExclusive(endDate) {
+  if (!endDate) return null;
+  return fmtDate(addDays(new Date(endDate + 'T00:00:00'), -1));
+}
+
+function exclusiveFromLastDay(lastKey) {
+  if (!lastKey) return null;
+  return fmtDate(addDays(new Date(lastKey + 'T00:00:00'), 1));
+}
+
+export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, onDeleteOccurrence, onDeleteFuture, onClose, notebooks, onNavigateToPage }) {
   const [title, setTitle] = useState(meeting.title);
+  const [day, setDay] = useState(dateKey);
   const [time, setTime] = useState(meeting.time || '');
   const [duration, setDuration] = useState(meeting.duration || '30');
   const [repeat, setRepeat] = useState(meeting.repeat || 'none');
+  const [endLast, setEndLast] = useState(() => lastDayFromExclusive(meeting.endDate));
   const [notes, setNotes] = useState(meeting.notes || '');
   const [linkedPageId, setLinkedPageId] = useState(meeting.linkedPageId || null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [pickerFor, setPickerFor] = useState(null);
+  const [pickerPos, setPickerPos] = useState(null);
+  const dayBtnRef = useRef(null);
+  const endBtnRef = useRef(null);
+  const pickerRef = useRef(null);
 
   const isRecurringInstance = meeting.id && (meeting._recurring || (meeting.repeat && meeting.repeat !== 'none'));
+  const isGhost = Boolean(meeting._recurring);
+  const repeats = repeat && repeat !== 'none';
+  const showPicker = pickerFor !== null;
+
+  const openPicker = (which) => {
+    const btn = which === 'end' ? endBtnRef.current : dayBtnRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const W = 240, H = 260, margin = 8;
+    let left = r.left;
+    if (left + W > window.innerWidth - margin) left = window.innerWidth - W - margin;
+    if (left < margin) left = margin;
+    let top = r.bottom + 6;
+    if (top + H > window.innerHeight - margin) top = r.top - H - 6;
+    setPickerPos({ top, left });
+    setPickerFor(which);
+  };
+  const closePicker = () => { setPickerFor(null); setPickerPos(null); };
+
+  useEffect(() => {
+    if (!showPicker) return;
+    const onDown = (e) => {
+      if (pickerRef.current?.contains(e.target)) return;
+      if (dayBtnRef.current?.contains(e.target)) return;
+      if (endBtnRef.current?.contains(e.target)) return;
+      closePicker();
+    };
+    const onKey = (e) => { if (e.key === 'Escape') closePicker(); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showPicker]);
+
+  const setRepeatValue = (value) => {
+    setRepeat(value);
+    if (value === 'none') setEndLast(null);
+  };
+
+  const setMeetingDay = (k) => {
+    setDay(k);
+    if (endLast && endLast < k) setEndLast(k);
+  };
 
   const save = () => {
-    onUpdate({ title: title.trim() || 'Untitled meeting', time, duration, repeat, notes, linkedPageId });
+    onUpdate(
+      {
+        title: title.trim() || 'Untitled meeting',
+        time,
+        duration,
+        repeat,
+        notes,
+        linkedPageId,
+        endDate: repeats ? exclusiveFromLastDay(endLast) : null,
+      },
+      day,
+    );
     onClose();
   };
 
   return (
-    <div className="nmd-modal-backdrop" onClick={onClose} style={{ zIndex: 1000 }}>
+    <>
+    <div
+      className="nmd-modal-backdrop"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ zIndex: 1000 }}
+    >
       <div className="nmd-modal" onClick={e => e.stopPropagation()} style={{ width: 420 }}>
         <div className="nmd-modal-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
           <h2 style={{ fontSize: 13, color: 'var(--fg3)', fontWeight: 500 }}>
@@ -48,6 +135,29 @@ export default function MeetingDialog({ meeting, onUpdate, onDelete, onDeleteOcc
             }}
             placeholder="Meeting title"
           />
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="nmd-mtg-field-label">Date</span>
+            <button
+              ref={dayBtnRef}
+              type="button"
+              className={'nmd-mtg-input nmd-mtg-date-btn' + (pickerFor === 'day' ? ' open' : '')}
+              onClick={() => pickerFor === 'day' ? closePicker() : openPicker('day')}
+              aria-label="Change meeting date"
+            >
+              <span>{formatDayLabel(day)}</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="16" rx="2" />
+                <path d="M3 9h18M8 3v4M16 3v4" />
+              </svg>
+            </button>
+            {isGhost && day !== dateKey && (
+              <span className="nmd-mtg-date-hint">Only this occurrence moves. The rest of the series stays put.</span>
+            )}
+            {!isGhost && isRecurringInstance && day !== dateKey && (
+              <span className="nmd-mtg-date-hint">Moves the start of the whole series.</span>
+            )}
+          </div>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
@@ -83,13 +193,44 @@ export default function MeetingDialog({ meeting, onUpdate, onDelete, onDeleteOcc
                 <button
                   key={opt.value}
                   className={'nmd-mtg-repeat-btn' + (repeat === opt.value ? ' active' : '')}
-                  onClick={() => setRepeat(opt.value)}
+                  onClick={() => setRepeatValue(opt.value)}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
           </div>
+
+          {repeats && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span className="nmd-mtg-field-label">Ends</span>
+              <div className="nmd-mtg-ends-row">
+                <button
+                  type="button"
+                  className={'nmd-mtg-repeat-btn' + (!endLast ? ' active' : '')}
+                  onClick={() => { setEndLast(null); if (pickerFor === 'end') closePicker(); }}
+                >
+                  Never
+                </button>
+                <button
+                  ref={endBtnRef}
+                  type="button"
+                  className={'nmd-mtg-input nmd-mtg-date-btn' + (pickerFor === 'end' ? ' open' : '')}
+                  onClick={() => pickerFor === 'end' ? closePicker() : openPicker('end')}
+                  aria-label="Last day of the series"
+                >
+                  <span>{endLast ? formatDayLabel(endLast) : 'On a day'}</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M3 9h18M8 3v4M16 3v4" />
+                  </svg>
+                </button>
+              </div>
+              {endLast && (
+                <span className="nmd-mtg-date-hint">Last occurrence on this day.</span>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span className="nmd-mtg-field-label">Notes</span>
@@ -191,5 +332,26 @@ export default function MeetingDialog({ meeting, onUpdate, onDelete, onDeleteOcc
         </div>
       </div>
     </div>
+      {showPicker && createPortal(
+        <div
+          ref={pickerRef}
+          className="nmd-dp-overlay"
+          style={{ top: pickerPos.top, left: pickerPos.left }}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+        >
+          <DatePicker
+            value={pickerFor === 'end' ? (endLast || day) : day}
+            minKey={pickerFor === 'end' ? day : undefined}
+            onChange={(k) => {
+              if (pickerFor === 'end') setEndLast(k);
+              else setMeetingDay(k);
+              closePicker();
+            }}
+          />
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

@@ -17,6 +17,9 @@ struct MeetingEditorView: View {
     @State private var meeting: Meeting
     @State private var timeDate: Date
     @State private var hasTime: Bool
+    @State private var selectedDay: Date
+    @State private var hasEnd: Bool
+    @State private var endDay: Date
     private let dayKey: String
     private let isNew: Bool
 
@@ -29,11 +32,22 @@ struct MeetingEditorView: View {
             _hasTime = State(initialValue: false)
             _timeDate = State(initialValue: Calendar.current.date(
                 bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date())
+            _selectedDay = State(initialValue: DateUtils.date(fromKey: k))
+            _hasEnd = State(initialValue: false)
+            _endDay = State(initialValue: DateUtils.date(fromKey: k))
         case .existing(let k, let m):
             dayKey = k; isNew = false
             _meeting = State(initialValue: m)
             _hasTime = State(initialValue: !m.time.isEmpty)
             _timeDate = State(initialValue: Self.parseTime(m.time))
+            _selectedDay = State(initialValue: DateUtils.date(fromKey: k))
+            if let end = m.endDate {
+                _hasEnd = State(initialValue: true)
+                _endDay = State(initialValue: DateUtils.addDays(DateUtils.date(fromKey: end), -1))
+            } else {
+                _hasEnd = State(initialValue: false)
+                _endDay = State(initialValue: DateUtils.date(fromKey: k))
+            }
         }
     }
 
@@ -46,12 +60,7 @@ struct MeetingEditorView: View {
                     TextField("Title", text: $meeting.title)
                 }
                 Section("When") {
-                    if isNew {
-                        // Same cue as the New Task dialog: say where it lands.
-                        LabeledContent("Day") {
-                            Text("Adds to \(DateUtils.dayLabel(DateUtils.date(fromKey: dayKey)))")
-                        }
-                    }
+                    DatePicker("Day", selection: $selectedDay, displayedComponents: .date)
                     Toggle("Set time", isOn: $hasTime)
                     if hasTime {
                         DatePicker("Time", selection: $timeDate, displayedComponents: .hourAndMinute)
@@ -60,6 +69,17 @@ struct MeetingEditorView: View {
                             value: $meeting.duration, in: 5...480, step: 5)
                     Picker("Repeat", selection: $meeting.repeatRule) {
                         ForEach(RepeatRule.allCases) { Text($0.label).tag($0) }
+                    }
+                    if meeting.repeatRule != .none {
+                        Toggle("Ends", isOn: $hasEnd)
+                        if hasEnd {
+                            DatePicker(
+                                "Last day",
+                                selection: $endDay,
+                                in: selectedDay...,
+                                displayedComponents: .date
+                            )
+                        }
                     }
                 }
                 Section("Notes") {
@@ -101,15 +121,33 @@ struct MeetingEditorView: View {
 
     private func save() {
         meeting.time = hasTime ? Self.formatTime(timeDate) : ""
-        if meeting.isRecurringGhost, let sd = meeting.sourceDate, let sid = meeting.sourceId {
-            // Editing a recurring instance writes to the source.
-            store.updateRecurringSource(sd, sourceId: sid) { src in
-                src.title = meeting.title; src.time = meeting.time
-                src.duration = meeting.duration; src.repeatRule = meeting.repeatRule
-                src.notes = meeting.notes
-            }
+        if meeting.repeatRule == .none || !hasEnd {
+            meeting.endDate = nil
         } else {
+            meeting.endDate = DateUtils.key(DateUtils.addDays(endDay, 1))
+        }
+        let target = DateUtils.key(selectedDay)
+        if meeting.isRecurringGhost, let sd = meeting.sourceDate, let sid = meeting.sourceId {
+            if target != dayKey {
+                store.skipOccurrence(sourceDate: sd, sourceId: sid, skipKey: dayKey)
+                var oneOff = meeting
+                oneOff.id = UUID().uuidString.lowercased()
+                oneOff.repeatRule = .none
+                oneOff.skipDates = []
+                oneOff.endDate = nil
+                store.saveMeeting(target, oneOff)
+            } else {
+                store.updateRecurringSource(sd, sourceId: sid) { src in
+                    src.title = meeting.title; src.time = meeting.time
+                    src.duration = meeting.duration; src.repeatRule = meeting.repeatRule
+                    src.notes = meeting.notes; src.endDate = meeting.endDate
+                }
+            }
+        } else if !isNew, target != dayKey {
             store.saveMeeting(dayKey, meeting)
+            store.moveMeeting(meeting.id, from: dayKey, to: target)
+        } else {
+            store.saveMeeting(target, meeting)
         }
         dismiss()
     }

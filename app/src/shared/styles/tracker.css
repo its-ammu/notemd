@@ -839,6 +839,31 @@ select.nmd-mtg-input {
   cursor: pointer;
   appearance: auto;
 }
+button.nmd-mtg-date-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+button.nmd-mtg-date-btn.open {
+  border-color: var(--accent-deep);
+  box-shadow: 0 0 0 2px rgba(107, 82, 174, 0.15);
+}
+button.nmd-mtg-date-btn svg { flex: none; color: var(--fg3); }
+.nmd-mtg-ends-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nmd-mtg-ends-row .nmd-mtg-date-btn { flex: 1; }
+.nmd-mtg-date-hint {
+  font-size: 11px;
+  color: var(--fg3);
+  line-height: 1.4;
+}
 textarea.nmd-mtg-input {
   resize: vertical;
   line-height: 1.5;

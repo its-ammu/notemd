@@ -135,18 +135,62 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
 
   // ── Meeting operations ───────────────────────────────────────────
 
-  const saveMeeting = (dateKey, id, patch) => {
+  const writeMeeting = ({ fromKey, toKey, id, patch, isNew, rescheduleOccurrence }) => {
     setMeetingsByDate(prev => {
       const next = { ...prev };
-      const list = next[dateKey] || [];
-      const existing = list.find(m => m.id === id);
-      if (existing) {
-        next[dateKey] = list.map(m => m.id === id ? { ...m, ...patch } : m);
+      if (rescheduleOccurrence) {
+        const { sourceDate, sourceId, skipKey } = rescheduleOccurrence;
+        const srcList = [...(next[sourceDate] || [])];
+        const si = srcList.findIndex(m => m.id === sourceId);
+        if (si >= 0) {
+          const src = srcList[si];
+          srcList[si] = { ...src, skipDates: Array.from(new Set([...(src.skipDates || []), skipKey])) };
+          next[sourceDate] = srcList;
+        }
+        next[toKey] = [...(next[toKey] || []), {
+          id: crypto.randomUUID(),
+          title: patch.title,
+          time: patch.time,
+          duration: patch.duration,
+          repeat: 'none',
+          notes: patch.notes,
+          linkedPageId: patch.linkedPageId,
+        }];
+        return next;
+      }
+      if (isNew) {
+        next[toKey] = [...(next[toKey] || []), { id: crypto.randomUUID(), ...patch }];
+        return next;
+      }
+      const list = [...(next[fromKey] || [])];
+      const idx = list.findIndex(m => m.id === id);
+      if (idx < 0) {
+        next[toKey] = [...(next[toKey] || []), { id, ...patch }];
+        return next;
+      }
+      const meeting = { ...list[idx], ...patch };
+      delete meeting._recurring;
+      delete meeting.sourceId;
+      delete meeting.sourceDate;
+      list.splice(idx, 1);
+      if (fromKey === toKey) {
+        list.splice(idx, 0, meeting);
+        next[fromKey] = list;
       } else {
-        next[dateKey] = [...list, { id, ...patch }];
+        if (list.length === 0) delete next[fromKey];
+        else next[fromKey] = list;
+        next[toKey] = [...(next[toKey] || []), meeting];
       }
       return next;
     });
+  };
+
+  const jumpToDay = (dateKey) => {
+    const d = new Date(dateKey + 'T00:00:00');
+    setWeekStart(startOfWeek(d));
+    const dow = d.getDay();
+    if (viewMode === 'day') setDayOffset(dow === 0 ? 6 : dow - 1);
+    if (viewMode === 'workweek' && (dow === 0 || dow === 6)) setViewMode('full');
   };
 
   const updateRecurringSource = (sourceDate, sourceId, patch) => {
@@ -297,7 +341,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           )}
           {byPrio.high > 0 && <span className="nmd-pill" title="Open high-priority"><span className="nmd-task-prio-dot nmd-prio-high" style={{ marginRight: 5 }} /><b>{byPrio.high}</b> high</span>}
           {byPrio.med > 0 && <span className="nmd-pill"><span className="nmd-task-prio-dot nmd-prio-med" style={{ marginRight: 5 }} /><b>{byPrio.med}</b> med</span>}
-          <HelpIcon tip="Drag tasks between days. Click tasks to edit priority, add subtasks, or link to pages. Meetings can repeat daily, weekly, or biweekly. Click the candle icon on any task to start a Pomodoro timer." position="bottom" />
+          <HelpIcon tip="Drag tasks between days. Click tasks to edit priority, add subtasks, or link to pages. Meetings can repeat daily, weekly, or biweekly — change a meeting's date from its edit dialog. Click the candle icon on any task to start a Pomodoro timer." position="bottom" />
         </div>
       </header>
 
@@ -365,18 +409,30 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           dateKey={meetingDialogData.dateKey}
           notebooks={notebooks}
           onNavigateToPage={onNavigateToPage}
-          onUpdate={(patch) => {
+          onUpdate={(patch, saveDateKey) => {
+            const target = saveDateKey || meetingDialogData.dateKey;
             if (meetingDialogData.isNew) {
-              const id = crypto.randomUUID();
-              saveMeeting(meetingDialogData.dateKey, id, patch);
+              writeMeeting({ toKey: target, patch, isNew: true });
             } else {
               const m = meetingDialogData.meeting;
-              if (m._recurring) {
+              const instanceKey = meetingDialogData.dateKey;
+              if (m._recurring && target !== instanceKey) {
+                writeMeeting({
+                  toKey: target,
+                  patch,
+                  rescheduleOccurrence: {
+                    sourceDate: m.sourceDate,
+                    sourceId: m.sourceId,
+                    skipKey: instanceKey,
+                  },
+                });
+              } else if (m._recurring) {
                 updateRecurringSource(m.sourceDate, m.sourceId, patch);
               } else {
-                saveMeeting(meetingDialogData.dateKey, m.id, patch);
+                writeMeeting({ fromKey: instanceKey, toKey: target, id: m.id, patch });
               }
             }
+            if (target !== meetingDialogData.dateKey) jumpToDay(target);
           }}
           onDelete={() => {
             const m = meetingDialogData.meeting;
