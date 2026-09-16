@@ -6,7 +6,8 @@ welcomes outside contributions.
 ## Setup
 
 Follow the [README](README.md) to get a local Supabase project and the web
-app running before making changes.
+app running before making changes. iOS setup is in
+[mobile/README.md](mobile/README.md).
 
 ## Making changes
 

@@ -25,8 +25,9 @@ Examples of unacceptable behavior:
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by opening an issue or contacting the maintainer directly. All
-complaints will be reviewed and investigated.
+reported by emailing [amuthavarsnirajkumar@gmail.com](mailto:amuthavarsnirajkumar@gmail.com).
+Do not open a public issue for harassment reports. All complaints will be
+reviewed and investigated.
 
 ## Attribution
 

@@ -16,5 +16,7 @@ docs/design-improvements.md
 # Product website (kept out of the public repo)
 web/
 
-# Per-contributor mobile config (real Supabase project values)
+# Per-contributor mobile config (real Supabase project values and App Group)
 mobile/notemd/notemd/Config.swift
+mobile/notemd/notemd/notemd.entitlements
+mobile/notemd/TodayWidgetExtension.entitlements

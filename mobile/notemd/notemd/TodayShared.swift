@@ -14,8 +14,6 @@
 
 import Foundation
 
-let kAppGroup = "group.com.varsni.notemd"
-
 struct TodayWidgetTask: Codable, Identifiable, Hashable {
     let id: String
     let title: String
@@ -26,13 +24,13 @@ enum TodaySharedStore {
     private static let key = "today_tasks_v1"
 
     static func save(_ tasks: [TodayWidgetTask]) {
-        guard let d = UserDefaults(suiteName: kAppGroup),
+        guard let d = UserDefaults(suiteName: Config.appGroup),
               let data = try? JSONEncoder().encode(tasks) else { return }
         d.set(data, forKey: key)
     }
 
     static func load() -> [TodayWidgetTask] {
-        guard let d = UserDefaults(suiteName: kAppGroup),
+        guard let d = UserDefaults(suiteName: Config.appGroup),
               let data = d.data(forKey: key),
               let tasks = try? JSONDecoder().decode([TodayWidgetTask].self, from: data)
         else { return [] }

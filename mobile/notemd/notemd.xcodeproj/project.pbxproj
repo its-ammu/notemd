@@ -55,6 +55,7 @@
 		C07257262FE189D700BE8E24 /* Exceptions for "notemd" folder in "TodayWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Config.swift,
 				TodayShared.swift,
 			);
 			target = C07257082FE188F900BE8E24 /* TodayWidgetExtension */;

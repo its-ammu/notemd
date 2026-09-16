@@ -71,6 +71,7 @@ npm run lint     # ESLint check
 ```
 
 See [`app/README.md`](app/README.md) for more on the web app's structure,
+[`mobile/README.md`](mobile/README.md) for the iOS app,
 [`CLAUDE.md`](CLAUDE.md) for an architecture overview, and
 [`docs/theme.md`](docs/theme.md) for the UI design language.
 

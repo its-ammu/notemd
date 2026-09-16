@@ -12,6 +12,12 @@
 //  extension, so a copy sitting next to Config.swift errors with either
 //  "Invalid redeclaration of Config" (as .swift) or "Unexpected input file"
 //  (as any other extension).
+//
+//  App Group: set `appGroup` here, then copy the matching entitlements
+//  examples so all three files use the same identifier:
+//    cp notemd.entitlements.example notemd/notemd.entitlements
+//    cp TodayWidgetExtension.entitlements.example TodayWidgetExtension.entitlements
+//  Create that App Group on your Apple Developer team in Xcode.
 
 import Foundation
 
@@ -19,7 +25,5 @@ enum Config {
     static let supabaseURL = URL(string: "https://your-project-ref.supabase.co")!
     static let supabaseAnonKey = "your-anon-key"
 
-    // App Group — configured now so the future widget extension can share the
-    // cached snapshot + keychain key. Set the matching entitlement in Xcode.
     static let appGroup = "group.com.yourcompany.notemd"
 }
