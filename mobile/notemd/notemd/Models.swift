@@ -2,7 +2,7 @@
 //  Models.swift
 //  notemd
 //
-//  Client-side state shape, mirroring the web (see CLAUDE.md "State Shape").
+//  Client-side state shape, mirroring the web (see AGENTS.md "State Shape").
 //  tasksByDate / meetingsByDate are [dayKey: [item]] dictionaries keyed by
 //  "YYYY-MM-DD" (local).
 //

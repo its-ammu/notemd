@@ -2,7 +2,7 @@
 
 React + Vite web client for NoteMD. See the [repo root README](../README.md)
 for full setup instructions (Supabase project, migrations, env vars) and
-[`CLAUDE.md`](../CLAUDE.md) for an architecture overview.
+[`AGENTS.md`](../AGENTS.md) for an architecture overview.
 
 ## Commands
 

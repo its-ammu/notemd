@@ -14,7 +14,7 @@ app running before making changes. iOS setup is in
 1. Fork the repo and create a branch off `main`.
 2. Keep changes focused — a PR should do one thing (a bug fix, a feature, a
    refactor), not several unrelated things at once.
-3. Match the existing code style (see [CLAUDE.md](CLAUDE.md) for architecture
+3. Match the existing code style (see [AGENTS.md](AGENTS.md) for architecture
    and conventions). Run `npm run lint` in `app/` before opening a PR.
 4. If your change touches the database schema, add a new file under
    `supabase/migrations/` rather than editing an existing one — migrations are
