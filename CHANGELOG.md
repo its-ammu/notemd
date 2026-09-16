@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-09-16
+
+- Change a meeting's date from the editor (web and iOS)
+- Set an end date on repeating meetings
+- Keep the meeting dialog open while using the calendar
+
 ## 0.1.0 — 2026-09-16
 
 First public release.
