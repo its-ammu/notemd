@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStoredState } from '../../shared/hooks/useStoredState';
+import { isHttpPageOrigin, mountYouTubeIframe, stampYouTubeIframe } from './youtube';
 
 // 24/7 YouTube live streams (lofi.cafe-style). These play through the
 // YouTube IFrame API (they can't go through a plain <audio> element), so the
@@ -115,7 +116,15 @@ function ensurePlayerSingleton(initialVideoId) {
         el.replaceWith(fresh);
         el = fresh;
       }
-      log('creating player');
+      log('creating player at origin', window.location.origin);
+      // Build the iframe ourselves so referrerpolicy is set BEFORE the embed
+      // request. Setting it in onReady is too late — Error 153 already fired.
+      // YT.Player then binds to this existing iframe.
+      if (el.tagName !== 'IFRAME') {
+        el = mountYouTubeIframe(el, initialVideoId);
+      } else {
+        stampYouTubeIframe(el);
+      }
       // Cold first loads fetch the whole www.youtube.com player bundle (several
       // MB) before onReady — that can take a while on slow/cold-cache networks.
       // Give it a generous budget, and on timeout DON'T destroy the player: a
@@ -132,45 +141,37 @@ function ensurePlayerSingleton(initialVideoId) {
         playerPromise = null;
         reject(new Error('player init timeout'));
       }, 40000);
+      const playerVars = {
+        playsinline: 1,
+        rel: 0,
+        controls: 0,       // our doodle controls drive everything
+        disablekb: 1,
+        fs: 0,
+        iv_load_policy: 3, // no annotations
+        modestbranding: 1, // suppress YouTube logo
+        showinfo: 0,       // hide title/uploader overlay
+        cc_load_policy: 0, // don't auto-show captions
+        widget_referrer: isHttpPageOrigin() ? window.location.href : 'https://www.youtube.com/',
+      };
+      // tauri:// is not a valid HTTP Referer — sending it as `origin` is Error 153.
+      if (isHttpPageOrigin()) playerVars.origin = window.location.origin;
       const p = new YT.Player(el, {
         // Must be www.youtube.com (where the IFrame API script is served). The
         // nocookie host stalls playback at BUFFERING on Safari — segments fail
         // to load ("network connection was lost") and PLAYING is never reached.
         // The privacy win isn't worth a stream that won't play; keep this host.
         host: 'https://www.youtube.com',
-        // Cue the current station up front so the iframe has a valid video even
-        // before our play button loads one. Without this the embed holds an
-        // empty video and YouTube's own play button/logo throws "error 2:
-        // invalid video id".
-        videoId: initialVideoId || undefined,
         width: '100%',
         height: '100%',
-        playerVars: {
-          playsinline: 1,
-          rel: 0,
-          controls: 0,       // our doodle controls drive everything
-          disablekb: 1,
-          fs: 0,
-          iv_load_policy: 3, // no annotations
-          modestbranding: 1, // suppress YouTube logo
-          showinfo: 0,       // hide title/uploader overlay
-          cc_load_policy: 0, // don't auto-show captions
-          origin: window.location.origin,
-        },
+        playerVars,
         events: {
           onReady: () => {
             settled = true;
             clearTimeout(readyTimeout);
             log('player ready');
-            // Safari needs explicit autoplay permission on the iframe
             try {
               const iframe = p.getIframe();
-              if (iframe) {
-                if (!iframe.allow?.includes('autoplay')) {
-                  iframe.allow = 'autoplay; encrypted-media';
-                }
-                iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-              }
+              if (iframe) stampYouTubeIframe(iframe);
             } catch { /* ignore */ }
             p.setVolume(Math.round(bridge.volume * 100));
             player = p;

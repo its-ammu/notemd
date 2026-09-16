@@ -8,6 +8,7 @@ import { encodeSpacedLinkUrls, remarkUnderline } from './remark-notemd';
 import {
   IMAGE_REF_SCHEME, IMAGE_SIZES, resolveImageSrc, parseImageRef, imageMaxWidthForSize,
 } from '../../../shared/lib/uploadImage';
+import { isTauri, openExternal } from '../../../shared/lib/openExternal';
 
 /**
  * MarkdownView — renders markdown with full GFM support (tables,
@@ -104,7 +105,19 @@ function buildComponents(onNavigate, onResizeImage) {
           </a>
         );
       }
-      return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          {...props}
+          onClick={(e) => {
+            if (!isTauri()) return;
+            e.preventDefault();
+            openExternal(href).catch((err) => console.error('Failed to open link', err));
+          }}
+        >{children}</a>
+      );
     },
   };
 }

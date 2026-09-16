@@ -13,9 +13,6 @@ export function shareBase() {
   const configured = import.meta.env.VITE_PUBLIC_BASE_URL;
   if (configured) return configured.replace(/\/+$/, '') + '/';
   const { origin, pathname } = window.location;
-  if (/^(tauri:|https?:\/\/(localhost|127\.0\.0\.1|\[::1\]))/.test(origin)) {
-    return 'https://notemd.littlebuilds.dev/';
-  }
   return `${origin}${pathname}`;
 }
 

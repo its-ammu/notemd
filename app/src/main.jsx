@@ -11,8 +11,10 @@ import './shared/styles/responsive.css'
 import App from './App.jsx'
 import PublicPage from './features/notebooks/PublicPage.jsx'
 import { installExternalLinkHandler } from './shared/lib/openExternal.js'
+import { installTauriChrome } from './shared/lib/tauriChrome.js'
 
 installExternalLinkHandler()
+installTauriChrome()
 
 // A shared-page link (?p=<token>) renders a standalone read-only view,
 // skipping auth and the full app shell entirely.

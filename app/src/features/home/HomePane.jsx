@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { fmtDate, relTime, startOfWeek, addDays } from '../../shared/utils/time';
-import { getMeetingsForDay, expandRecurringMeetings } from '../tracker/meetings';
+import { getMeetingsForDay, expandRecurringMeetings, isMeetingOver } from '../tracker/meetings';
 import EmptyState from '../../shared/components/EmptyState';
 import { DoodleMug, DoodleClock, DoodleSquiggle, DoodleRing } from '../../shared/components/Doodles';
 import HomeListRail from './HomeListRail';
@@ -344,7 +344,7 @@ export default function HomePane({
                     <li key={m.id}>
                       <button
                         type="button"
-                        className="nmd-home-page"
+                        className={'nmd-home-page' + (isMeetingOver(today, m) ? ' done' : '')}
                         onClick={() => onOpenTrackerItem({ dateKey: todayKey, meetingId: m.id })}
                       >
                         <HomeListRail variant="meeting" />

@@ -39,16 +39,19 @@ export async function openExternal(href) {
  */
 export function installExternalLinkHandler() {
   if (!isTauri()) return;
-  document.addEventListener('click', (e) => {
-    if (e.defaultPrevented || e.button !== 0) return;
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const openFromAnchor = (e) => {
+    if (e.defaultPrevented || (e.button !== undefined && e.button !== 0)) return;
     const a = e.target.closest?.('a[href]');
     if (!a) return;
     const href = a.getAttribute('href');
     if (!href) return;
     if (a.target === '_blank' || isExternalHref(href)) {
       e.preventDefault();
+      e.stopPropagation();
       openExternal(href).catch((err) => console.error('Failed to open link', err));
     }
-  }, true);
+  };
+  // Capture so we win over WKWebView's "new window" path (plain click on
+  // target=_blank does nothing in Tauri; Cmd-click was the only thing that worked).
+  document.addEventListener('click', openFromAnchor, true);
 }

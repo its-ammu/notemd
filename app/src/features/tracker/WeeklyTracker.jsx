@@ -17,7 +17,12 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('nmd_tracker_mode') || 'full');
   const todayDow = new Date().getDay();
   const [dayOffset, setDayOffset] = useState(todayDow === 0 ? 6 : todayDow - 1);
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => { localStorage.setItem('nmd_tracker_mode', viewMode); }, [viewMode]);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   // Jump to a linked task/meeting (e.g. from home):
   // navigate to its week/day and open the matching dialog.
@@ -318,6 +323,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               onEditMeeting={(id) => setEditingMeeting({ dateKey: key, id })}
               onAddMeeting={() => setEditingMeeting({ dateKey: key, new: true })}
               meetings={getMeetings(d)}
+              now={now}
               showMeetings={meetingsDisplay !== 'drawer'}
               copyPrefs={copyPrefs}
               onStartPomodoro={onStartPomodoro}
@@ -331,6 +337,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
         <MeetingsDrawer
           days={days}
           getMeetings={getMeetings}
+          now={now}
           onAddMeeting={(dateKey) => setEditingMeeting({ dateKey, new: true })}
           onEditMeeting={(dateKey, id) => setEditingMeeting({ dateKey, id })}
         />

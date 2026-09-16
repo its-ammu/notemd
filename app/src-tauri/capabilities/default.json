@@ -5,6 +5,9 @@
   "windows": [
     "main"
   ],
+  "remote": {
+    "urls": ["http://localhost:1430/*"]
+  },
   "permissions": [
     "core:default",
     "opener:default",

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { fmtDate } from '../../shared/utils/time';
 import { DAY_NAMES } from '../../shared/utils/constants';
 import { DoodleClockMini } from '../../shared/components/Doodles';
+import { isMeetingOver } from './meetings';
 
 function fmtTime(t) {
   if (!t) return '';
@@ -20,7 +21,7 @@ function fmtDuration(d) {
   return m ? `${h}h${m}m` : `${h}h`;
 }
 
-export default function MeetingsDrawer({ days, getMeetings, onAddMeeting, onEditMeeting }) {
+export default function MeetingsDrawer({ days, getMeetings, onAddMeeting, onEditMeeting, now }) {
   const [open, setOpen] = useState(false);
 
   const totalCount = days.reduce((acc, d) => acc + getMeetings(d).length, 0);
@@ -74,7 +75,7 @@ export default function MeetingsDrawer({ days, getMeetings, onAddMeeting, onEdit
                     {mtgs.map(m => (
                       <li key={m.id}>
                         <button
-                          className="nmd-mtg-drawer-item"
+                          className={'nmd-mtg-drawer-item' + (isMeetingOver(d, m, now) ? ' done' : '')}
                           onClick={() => onEditMeeting(key, m.id)}
                         >
                           {m.time && <span className="nmd-mtg-drawer-time">{fmtTime(m.time)}</span>}

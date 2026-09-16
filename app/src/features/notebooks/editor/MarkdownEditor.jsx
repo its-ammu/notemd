@@ -12,8 +12,26 @@ import {
 } from '../../../shared/lib/uploadImage';
 import { mdTheme, mdSyntaxHighlight } from './theme.js';
 import { createSearchPanel } from './searchPanel.js';
+import { isTauri, isExternalHref, openExternal } from '../../../shared/lib/openExternal';
 
 
+
+function urlAtPos(view, pos) {
+  const line = view.state.doc.lineAt(pos);
+  const rel = pos - line.from;
+  const md = /\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/g;
+  let m;
+  while ((m = md.exec(line.text))) {
+    if (rel >= m.index && rel <= m.index + m[0].length) return m[1];
+  }
+  const raw = /https?:\/\/[^\s<>)'"]+/g;
+  while ((m = raw.exec(line.text))) {
+    if (rel >= m.index && rel <= m.index + m[0].length) {
+      return m[0].replace(/[.,;:!?]+$/, '');
+    }
+  }
+  return null;
+}
 
 /* Languages offered by the code-block toolbar button. Labels are shown in the
    menu; `id` is the fence info-string used for syntax highlighting. */
@@ -561,6 +579,18 @@ export default function MarkdownEditor({ value, onChange, notebooks = [] }) {
         updateListener,
         EditorView.lineWrapping,
         EditorView.domEventHandlers({
+          click(event, view) {
+            const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+            if (pos == null) return false;
+            const url = urlAtPos(view, pos);
+            if (!url || !isExternalHref(url)) return false;
+            if (isTauri() || event.metaKey || event.ctrlKey) {
+              event.preventDefault();
+              openExternal(url).catch((err) => console.error('Failed to open link', err));
+              return true;
+            }
+            return false;
+          },
           paste(event, view) {
             const files = imageFilesFrom(event.clipboardData?.items || []);
             if (!files.length) return false; // let CodeMirror handle text paste

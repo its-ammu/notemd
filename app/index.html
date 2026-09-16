@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!-- `origin` (not strict-origin-when-cross-origin): WKWebView/Tauri will
+         otherwise omit the Referer on the YouTube iframe and the player
+         fails with Error 153. Chrome already sends a Referer either way. -->
+    <meta name="referrer" content="origin" />
     <!-- Warm up connections to YouTube's player hosts so the radio's first play
          doesn't pay DNS+TLS setup serially while loading the embedded player. -->
     <link rel="preconnect" href="https://www.youtube.com" />

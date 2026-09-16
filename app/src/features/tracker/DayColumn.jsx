@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Task from './Task';
 import { DAY_NAMES } from '../../shared/utils/constants';
 import { DoodleClockMini, DoodleClockAdd, IconCopy, IconCheck, IconPlus } from '../../shared/components/Doodles';
+import { isMeetingOver } from './meetings';
 
 function fmtTime(t) {
   if (!t) return '';
@@ -27,7 +28,7 @@ function applyCase(text, mode) {
   return text;
 }
 
-export default function DayColumn({ date, tasks, meetings, showMeetings = true, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onEditMeeting, onAddMeeting, onStartPomodoro, onDuplicate, copyPrefs = {} }) {
+export default function DayColumn({ date, tasks, meetings, showMeetings = true, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onEditMeeting, onAddMeeting, onStartPomodoro, onDuplicate, copyPrefs = {}, now }) {
   const [adding, setAdding] = useState(false);
   const [addText, setAddText] = useState('');
   const [copied, setCopied] = useState(false);
@@ -145,7 +146,7 @@ export default function DayColumn({ date, tasks, meetings, showMeetings = true, 
               .map((m) => (
                 <button
                   key={m.id}
-                  className="nmd-day-meeting"
+                  className={'nmd-day-meeting' + (isMeetingOver(date, m, now) ? ' done' : '')}
                   onClick={() => onEditMeeting(m.id)}
                   title={m.title + (m.time ? ` · ${fmtTime(m.time)}` : '') + (m.duration ? ` (${fmtDuration(m.duration)})` : '')}
                 >

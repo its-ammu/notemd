@@ -62,3 +62,28 @@ export function getMeetingsForDay(meetingsByDate, day) {
   const list = map[fmtDate(day)] || [];
   return [...list].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 }
+
+/** End timestamp of a meeting on `date`, or null if it has no start time. */
+export function meetingEndMs(date, meeting) {
+  if (!meeting?.time) return null;
+  const [h, m] = String(meeting.time).split(':').map(Number);
+  if (!Number.isFinite(h)) return null;
+  const start = new Date(date);
+  start.setHours(h, Number.isFinite(m) ? m : 0, 0, 0);
+  const dur = parseInt(meeting.duration, 10);
+  const mins = Number.isFinite(dur) && dur > 0 ? dur : 30;
+  return start.getTime() + mins * 60 * 1000;
+}
+
+/** True once the meeting's day is over, or today's slot has ended. */
+export function isMeetingOver(date, meeting, now = Date.now()) {
+  const day = date instanceof Date ? new Date(date) : new Date(String(date) + 'T00:00:00');
+  day.setHours(0, 0, 0, 0);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  if (day < today) return true;
+  if (day > today) return false;
+  const end = meetingEndMs(day, meeting);
+  if (end == null) return false;
+  return now >= end;
+}
