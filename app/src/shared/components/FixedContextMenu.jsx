@@ -9,7 +9,10 @@ export default function FixedContextMenu({ x, y, className = 'nmd-menu', childre
     const el = ref.current;
     if (!el) return;
     const pad = 8;
-    const { width, height } = el.getBoundingClientRect();
+    // Layout size, not getBoundingClientRect: the menu scales in as it appears,
+    // and a mid-animation rect reads smaller than the menu will end up.
+    const width = el.offsetWidth;
+    const height = el.offsetHeight;
     setPos({
       left: Math.max(pad, Math.min(x, window.innerWidth - width - pad)),
       top: Math.max(pad, Math.min(y, window.innerHeight - height - pad)),

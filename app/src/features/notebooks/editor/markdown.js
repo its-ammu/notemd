@@ -1,16 +1,40 @@
 import GithubSlugger from 'github-slugger';
+import { stripHighlightMarkers } from './highlight.js';
 
 /* Strip inline markdown so the text we slugify is the same plain text
  * rehype-slug sees inside the rendered heading (otherwise links, bold, etc.
  * leak into the slug). */
 function stripInlineMarkdown(s) {
-  return s
+  return stripHighlightMarkers(s)
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/~~([^~]+)~~/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+}
+
+/** One line of plain text for a list preview. Markers, code fences and
+    highlight strokes come off; the note itself is unchanged. */
+export function previewText(source, limit = 120) {
+  if (!source) return '';
+  const parts = [];
+  let inCode = false;
+  for (const raw of String(source).split('\n')) {
+    if (raw.trim().startsWith('```')) { inCode = !inCode; continue; }
+    if (inCode) continue;
+    const line = stripInlineMarkdown(raw)
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/^\s{0,3}#{1,6}\s+/, '')
+      .replace(/^\s*[-*+]\s+/, '')
+      .replace(/^\s*\d+[.)]\s+/, '')
+      .replace(/^\s*>\s?/, '')
+      .replace(/\|/g, ' ')
+      .replace(/<[^>]+>/g, '')
+      .trim();
+    if (line && !/^[-:| ]+$/.test(line)) parts.push(line);
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').slice(0, limit);
 }
 
 export function parseHeadings(source) {

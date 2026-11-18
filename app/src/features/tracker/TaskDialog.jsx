@@ -4,8 +4,9 @@ import { PRIO } from '../../shared/utils/constants';
 import { fmtDate, addDays } from '../../shared/utils/time';
 import DatePicker from './DatePicker';
 import PageLinkPicker from '../../shared/components/PageLinkPicker';
+import CalendarChips from './CalendarChips';
 
-export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, onClose, notebooks, onNavigateToPage, pomoStats }) {
+export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, onClose, notebooks, onNavigateToPage, pomoStats, calendars = null, onMoveCalendar }) {
   const [pickerPos, setPickerPos] = useState(null);
   const pickerBtnRef = useRef(null);
   const pickerRef = useRef(null);
@@ -144,7 +145,7 @@ export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, 
 
         {onMove && dateKey && (
           <div className="nmd-task-move">
-            <span className="nmd-task-move-label">Move</span>
+            <span className={'nmd-task-move-label' + (calendars?.multiple ? ' wide' : '')}>Move</span>
             <button className="nmd-icon-chip" onClick={() => moveBy(1)} title="Tomorrow">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14" /><path d="m13 6 6 6-6 6" />
@@ -168,6 +169,17 @@ export default function TaskDialog({ task, dateKey, onUpdate, onDelete, onMove, 
                 <path d="M3 9h18M8 3v4M16 3v4" />
               </svg>
             </button>
+          </div>
+        )}
+
+        {calendars?.multiple && onMoveCalendar && (
+          <div className="nmd-task-move">
+            <span className="nmd-task-move-label wide">Calendar</span>
+            <CalendarChips
+              calendars={calendars}
+              value={calendars.idOf(task)}
+              onChange={onMoveCalendar}
+            />
           </div>
         )}
 

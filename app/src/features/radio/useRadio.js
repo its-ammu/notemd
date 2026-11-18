@@ -333,6 +333,16 @@ export function useRadio({ onError } = {}) {
     }
   };
 
+  /** Put a removed station back where it was (undo for deleteCustomStation). */
+  const restoreCustomStation = (station, index) => {
+    setCustomStations(prev => {
+      if (prev.some(s => s.id === station.id)) return prev;
+      const next = [...prev];
+      next.splice(Math.min(index, next.length), 0, station);
+      return next;
+    });
+  };
+
   const deleteCustomStation = (id) => {
     setCustomStations(prev => prev.filter(s => s.id !== id));
     if (stationId === id) {
@@ -373,7 +383,7 @@ export function useRadio({ onError } = {}) {
     volume, setVolume,
     sleepMins, setSleepMinutes,
     play, pause, toggle, selectStation,
-    addCustomStation, updateCustomStation, deleteCustomStation,
+    addCustomStation, updateCustomStation, deleteCustomStation, restoreCustomStation,
     ensurePlayer,
   };
 }

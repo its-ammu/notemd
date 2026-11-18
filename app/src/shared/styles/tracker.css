@@ -77,6 +77,8 @@
   display: flex; align-items: center; gap: 16px;
   padding: 18px 28px 14px;
   border-bottom: none;
+  /* Narrow windows: let the stats drop to a second row instead of overflowing. */
+  flex-wrap: wrap; row-gap: 10px;
 }
 .nmd-tracker-title {
   display: flex; align-items: baseline; gap: 10px;
@@ -102,6 +104,87 @@
 }
 .nmd-week-stats .nmd-pill b { color: var(--fg1); font-weight: 600; }
 
+/* Calendars — the switcher pill in the header, its menu, and the chips that
+   file a task or meeting under a calendar. Calendars are told apart by name
+   alone — no colour, no dot: colour in the tracker already means priority. */
+.nmd-cal-switch {
+  display: inline-flex; align-items: center; gap: 7px;
+  max-width: 200px; height: 28px; padding: 0 9px 0 12px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 14px; color: var(--fg1);
+  font-family: inherit; font-size: 12.5px; font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.nmd-cal-switch:hover,
+.nmd-cal-switch.open { background: var(--bg-hover); border-color: var(--border-strong); }
+.nmd-cal-switch svg { flex: none; color: var(--fg3); transition: transform var(--dur-fast) var(--ease); }
+.nmd-cal-switch.open svg { transform: rotate(180deg); }
+.nmd-cal-switch-name,
+.nmd-cal-name,
+.nmd-cal-chip-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+
+.nmd-cal-menu { width: 252px; }
+.nmd-cal-row { display: flex; align-items: center; gap: 2px; border-radius: var(--radius-sm); }
+.nmd-cal-row.active { background: var(--bg-selected); }
+.nmd-cal-menu .nmd-cal-pick { flex: 1; min-width: 0; }
+.nmd-cal-row.active .nmd-cal-pick:hover { background: transparent; }
+.nmd-cal-name { flex: 1; }
+.nmd-cal-check { flex: none; color: var(--fg2); }
+.nmd-cal-menu .nmd-cal-edit {
+  flex: none; width: 26px; height: 26px; padding: 0;
+  justify-content: center; color: var(--fg3);
+  opacity: 0; transition: opacity var(--dur-fast) var(--ease);
+}
+.nmd-cal-row:hover .nmd-cal-edit,
+.nmd-cal-row:focus-within .nmd-cal-edit,
+.nmd-cal-menu .nmd-cal-edit.on { opacity: 1; }
+.nmd-cal-menu .nmd-cal-edit:hover,
+.nmd-cal-menu .nmd-cal-edit.on { color: var(--fg1); }
+.nmd-cal-editor {
+  margin: 2px 0 6px 13px; padding-left: 9px;
+  border-left: 1px solid var(--border);
+}
+.nmd-cal-menu .nmd-inline-form { margin: 2px 0; }
+
+.nmd-cal-chips { display: flex; gap: 4px; flex-wrap: wrap; min-width: 0; }
+.nmd-cal-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 160px; padding: 5px 10px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--fg2);
+  font-family: var(--font-sans); font-size: 12px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.nmd-cal-chip:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.nmd-cal-chip.active {
+  background: var(--bg-selected); border-color: var(--fg3);
+  color: var(--fg1); font-weight: 500; cursor: default;
+}
+/* A calendar picker for forms (Home quick-add): a field-shaped button that
+   opens a small menu, instead of a native select. */
+.nmd-cal-select {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-width: 0; padding: 0 10px 0 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--fg1);
+  font-family: inherit; font-size: 13px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.nmd-cal-select:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.nmd-cal-select.open { border-color: var(--accent-blue); }
+.nmd-cal-select svg { flex: none; color: var(--fg3); transition: transform var(--dur-fast) var(--ease); }
+.nmd-cal-select.open svg { transform: rotate(180deg); }
+.nmd-cal-select-menu { min-width: 170px; max-width: 240px; }
+.nmd-cal-select-menu button.active { background: var(--bg-selected); }
+
+/* With a Calendar row under Move, both labels share a column. */
+.nmd-task-move-label.wide { width: 58px; }
+
 /* Week grid — a white sheet floating on the canvas, days divided by hairlines */
 .nmd-week-grid {
   display: grid;
@@ -118,9 +201,63 @@
 }
 .nmd-week-grid.day-view {
   grid-template-columns: minmax(0, 1fr) !important;
-  width: min(680px, calc(100% - 32px));
+  width: min(1040px, calc(100% - 32px));
   margin-left: auto; margin-right: auto;
 }
+
+/* Day view: two facing pages — the to-do list on the left, the clock on the
+   right — divided by a hairline like a notebook's gutter. */
+.nmd-day-body.nmd-day-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+.nmd-day-split.tasks-only { grid-template-columns: minmax(0, 1fr); max-width: 680px; width: 100%; margin: 0 auto; }
+.nmd-day-pane {
+  display: flex; flex-direction: column;
+  min-width: 0; min-height: 0;
+}
+.nmd-day-pane + .nmd-day-pane { border-left: 1px solid var(--border); }
+.nmd-day-pane-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 20px 8px;
+  min-height: 44px;
+}
+.nmd-day-pane-title {
+  margin: 0;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--fg3);
+}
+.nmd-day-pane-count {
+  display: inline-flex; align-items: baseline; gap: 3px;
+  padding: 1px 8px;
+  border: 1px solid var(--border); border-radius: 999px;
+  font-size: 11px; color: var(--fg3);
+}
+.nmd-day-pane-count b { color: var(--fg1); font-weight: 600; }
+.nmd-day-pane-add {
+  margin-left: auto;
+  width: 26px; height: 26px; border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--fg3);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.nmd-day-pane-add:hover { background: var(--bg-hover); color: var(--fg1); }
+.nmd-day-pane-body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 0 20px 20px;
+  display: flex; flex-direction: column;
+}
+.nmd-day-pane-body::-webkit-scrollbar { width: 6px; }
+.nmd-day-pane-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.nmd-day-pane-empty {
+  font-size: 12.5px; color: var(--fg4);
+  padding: 6px 6px 10px;
+}
+.nmd-day-pane-schedule .nmd-tl { margin-top: 8px; }
 
 .nmd-day {
   display: flex; flex-direction: column;
@@ -200,6 +337,8 @@
   transition: background var(--dur-fast) var(--ease);
 }
 .nmd-day-meeting:hover { background: var(--bg-hover); }
+.nmd-day-meeting.has-cal { flex-direction: column; align-items: stretch; gap: 3px; }
+.nmd-day-meeting-line { display: flex; align-items: center; gap: 8px; min-width: 0; width: 100%; }
 .nmd-day-meeting-clock {
   color: var(--fg3); flex-shrink: 0;
   transform: rotate(-6deg);
@@ -208,8 +347,13 @@
   flex: 1; min-width: 0;
   font-size: 12.5px; font-weight: 400;
   color: var(--fg1); line-height: 1.4;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
+.nmd-day-meeting-meta {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  margin-left: 22px;
+}
+.nmd-day-meeting-meta .nmd-cal-tag { flex: 0 1 auto; min-width: 0; max-width: 100%; }
 .nmd-day-meeting-time {
   font-family: var(--font-mono); font-size: 10px;
   color: var(--fg4); flex-shrink: 0;
@@ -321,11 +465,12 @@
 }
 
 .nmd-task-title {
-  flex: 1;
+  flex: 1; min-width: 0;
   font-size: 13px; font-weight: 400;
   color: var(--fg1); line-height: 1.45;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
+.nmd-task-cal { margin: 2px 0 0 25px; align-self: flex-start; width: fit-content; }
 .nmd-task-title[contenteditable="true"] {
   outline: none; cursor: text;
 }
@@ -898,3 +1043,118 @@ textarea.nmd-mtg-input {
 .nmd-hstack { display: flex; align-items: center; }
 .nmd-gap-2 { gap: 8px; }
 
+/* A calendar's name, used wherever several calendars share a list.
+   No colour: the only dot in the tracker is priority. */
+.nmd-cal-tag {
+  max-width: 96px; padding: 0 7px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--fg3);
+  font-family: var(--font-sans); font-size: 11px; font-weight: 500; line-height: 16px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none;
+}
+.nmd-cal-grip {
+  flex: none; width: 16px; align-self: stretch;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--fg4); cursor: grab;
+}
+.nmd-cal-grip.is-pin { cursor: default; }
+.nmd-cal-grip:active { cursor: grabbing; }
+.nmd-cal-row.drop-before { box-shadow: inset 0 2px 0 var(--accent-blue); }
+.nmd-cal-row.drop-after { box-shadow: inset 0 -2px 0 var(--accent-blue); }
+
+.nmd-task-rename {
+  width: 100%; border: none; background: var(--bg-raised);
+  border-radius: 4px; box-shadow: 0 0 0 2px var(--focus-ring);
+  padding: 0 4px; margin: 0 -2px;
+  font: inherit; color: inherit; line-height: inherit;
+}
+
+/* Day view: meetings on a clock. */
+.nmd-tl { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
+.nmd-tl-untimed { display: flex; flex-direction: column; }
+.nmd-tl-grid { position: relative; margin-left: 42px; }
+.nmd-tl-hour {
+  position: absolute; left: -42px; right: 0; height: 0;
+  border-top: 1px solid var(--border);
+}
+.nmd-tl-hour span {
+  position: absolute; top: -7px; left: 0; width: 36px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--fg4); text-align: right;
+}
+.nmd-tl-now {
+  position: absolute; left: 0; right: 0; height: 0; z-index: 2;
+  border-top: 2px solid var(--accent-blue);
+}
+.nmd-tl-now::before {
+  content: ''; position: absolute; left: -4px; top: -4px;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent-blue);
+}
+.nmd-tl-block {
+  position: absolute; display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 4px 8px; overflow: hidden; text-align: left; cursor: pointer;
+  background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  font-family: inherit; color: var(--fg1);
+}
+.nmd-tl-block {
+  transition: box-shadow var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+/* Hover lifts the sheet a touch instead of graying it out. */
+.nmd-tl-block:hover { z-index: 1; border-color: var(--border-strong); box-shadow: var(--shadow-card); transform: translateY(-1px); }
+.nmd-tl-block:hover .nmd-tl-title { color: var(--ink-strong); }
+.nmd-tl-row { display: flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
+.nmd-tl-time { font-family: var(--font-mono); font-size: 10px; color: var(--fg4); line-height: 1.2; }
+.nmd-tl-title {
+  font-size: 12px; line-height: 1.3; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nmd-tl-block.done { opacity: 0.6; }
+.nmd-tl-block .nmd-day-meeting-clock { margin-left: -1px; }
+.nmd-tl-block.done .nmd-tl-title { text-decoration: line-through; color: var(--fg3); }
+
+
+/* Day view: hovering an empty half hour offers to add a meeting there. */
+.nmd-tl-grid.can-add { cursor: pointer; }
+.nmd-tl-ghost {
+  position: absolute; left: 2px; right: 2px; z-index: 0;
+  display: flex; align-items: center; padding: 0 8px;
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--accent-tint);
+  font-family: var(--font-mono); font-size: 10px; color: var(--accent-deep);
+  pointer-events: none;
+}
+.nmd-tl-block { z-index: 1; }
+
+/* Long-press menu: delete sits last, in rose */
+.nmd-ctx-item.danger { color: var(--danger); }
+.nmd-ctx-item.danger svg { color: var(--danger); }
+/* No iOS "copy / look up" callout when holding a task for its menu */
+.nmd-task { -webkit-touch-callout: none; }
+
+/* Day view is one roomy sheet, so its quiet controls stay visible instead of
+   flickering in whenever the pointer is anywhere on the day. */
+.nmd-week-grid.day-view .nmd-add-task,
+.nmd-week-grid.day-view .nmd-day-btn { opacity: 1; }
+
+/* Keyboard users reach hover-revealed controls too */
+.nmd-day-btn:focus-visible,
+.nmd-add-task:focus-visible,
+.nmd-subtask-delete:focus-visible { opacity: 1; }
+
+/* Empty day in the week grid: a faint weekday doodle where the tasks would be */
+.nmd-day-empty-art {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 28px 0 10px;
+  color: var(--fg5);
+  transition: color var(--dur-med) var(--ease);
+  pointer-events: none;
+}
+.nmd-day:hover .nmd-day-empty-art { color: var(--fg4); }
+.nmd-day-empty-label {
+  font-size: 11px; letter-spacing: 0.04em; color: var(--fg5);
+}
+/* The doodles are drawn on different canvas sizes; pin the line weight so
+   they all read as the same pen. */
+.nmd-day-empty-art svg path { vector-effect: non-scaling-stroke; stroke-width: 1.6px; }
+
+/* The calendar dropdown sits at the right end of the header, after the stats */
+.nmd-week-stats .nmd-cal-switch { font-family: var(--font-sans); margin-left: 4px; }

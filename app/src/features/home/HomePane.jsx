@@ -4,6 +4,8 @@ import { getMeetingsForDay, expandRecurringMeetings, isMeetingOver } from '../tr
 import EmptyState from '../../shared/components/EmptyState';
 import { DoodleMug, DoodleClock, DoodleSquiggle, DoodleRing } from '../../shared/components/Doodles';
 import HomeListRail from './HomeListRail';
+import { previewText } from '../notebooks/editor/markdown';
+import CalendarSelect from '../tracker/CalendarSelect';
 
 // Quirky greetings, rotated per day (stable across renders so the header
 // doesn't flicker — same day, same line).
@@ -118,7 +120,32 @@ function formatCountdown(mins) {
 export default function HomePane({
   notebooks, tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate,
   onOpenPage, onGoToTab, onOpenTrackerItem, displayName, pomoStats,
+  calendars = null,
 }) {
+  // Home is the overview: it shows every calendar together. Once there's more
+  // than one, each row names its calendar and quick-add asks where to file.
+  const labelled = !!calendars?.multiple;
+  const [addCalendarId, setAddCalendarId] = useState(null);
+  const addTo = calendars ? calendars.byId(addCalendarId ?? calendars.activeId).id : null;
+  const focusFor = (item) => (calendars ? { calendarId: calendars.idOf(item) } : null);
+  const calendarTag = (item) => {
+    if (!labelled) return null;
+    const c = calendars.of(item);
+    return (
+      <span className="nmd-cal-tag" title={`${c.name} calendar`}>
+        {c.name}
+      </span>
+    );
+  };
+  const calendarSelect = labelled && (
+    <CalendarSelect
+      className="nmd-home-quickadd-cal"
+      calendars={calendars}
+      value={addTo}
+      onChange={setAddCalendarId}
+    />
+  );
+
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayKey = fmtDate(today);
   const todayTasks = tasksByDate[todayKey] || [];
@@ -162,7 +189,7 @@ export default function HomePane({
   const addQuickTask = () => {
     const title = taskText.trim();
     if (!title) return;
-    const task = { id: crypto.randomUUID(), title, done: false, priority: 'none', subtasks: [], created: Date.now() };
+    const task = { id: crypto.randomUUID(), title, done: false, priority: 'none', subtasks: [], created: Date.now(), ...calendars?.stamp(addTo) };
     setTasksByDate(prev => ({ ...prev, [todayKey]: [...(prev[todayKey] || []), task] }));
     setTaskText('');
     setQuickAddTask(false);
@@ -170,7 +197,7 @@ export default function HomePane({
 
   const addQuickMeeting = () => {
     const title = meetingText.trim() || 'Meeting';
-    const meeting = { id: crypto.randomUUID(), title, time: meetingTime, duration: '30', repeat: 'none', notes: '' };
+    const meeting = { id: crypto.randomUUID(), title, time: meetingTime, duration: '30', repeat: 'none', notes: '', ...calendars?.stamp(addTo) };
     setMeetingsByDate(prev => ({ ...prev, [todayKey]: [...(prev[todayKey] || []), meeting] }));
     setMeetingText('');
     setMeetingTime('');
@@ -182,7 +209,7 @@ export default function HomePane({
       nb.pages.map(p => ({
         id: p.id, title: p.title, updated: p.updated || 0,
         nbId: nb.id, nbName: nb.name, nbColor: nb.color,
-        preview: (p.body || '').replace(/\s+/g, ' ').slice(0, 120),
+        preview: previewText(p.body),
       }))
     );
     return all.sort((a, b) => b.updated - a.updated).slice(0, 6);
@@ -261,7 +288,7 @@ export default function HomePane({
           </div>
           <div className="nmd-home-next-body">
             <span className="nmd-home-next-quip">{CLEAR_QUIPS[dayOfYear(new Date()) % CLEAR_QUIPS.length]}</span>
-            <span className="nmd-home-next-main muted">No meetings soon ~ yayy.</span>
+            <span className="nmd-home-next-main muted">Nothing on the calendar for now.</span>
           </div>
         </div>
       )}
@@ -288,7 +315,7 @@ export default function HomePane({
           {(quickAddTask || quickAddMeeting) && (
             <div className="nmd-home-quickadd-inline">
               {quickAddTask && (
-                <div className="nmd-home-quickadd-form">
+                <div className={'nmd-home-quickadd-form' + (labelled ? ' with-cal' : '')}>
                   <input
                     autoFocus
                     type="text"
@@ -300,6 +327,7 @@ export default function HomePane({
                       if (e.key === 'Escape') { setQuickAddTask(false); setTaskText(''); }
                     }}
                   />
+                  {calendarSelect}
                   <button type="button" className="nmd-home-quickadd-submit" onClick={addQuickTask}>Add</button>
                   <button type="button" className="nmd-home-quickadd-cancel" onClick={() => { setQuickAddTask(false); setTaskText(''); }} aria-label="Cancel">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -307,7 +335,7 @@ export default function HomePane({
                 </div>
               )}
               {quickAddMeeting && (
-                <div className="nmd-home-quickadd-form">
+                <div className={'nmd-home-quickadd-form' + (labelled ? ' with-cal' : '')}>
                   <input
                     autoFocus
                     type="text"
@@ -325,6 +353,7 @@ export default function HomePane({
                     onChange={e => setMeetingTime(e.target.value)}
                     className="nmd-home-quickadd-time"
                   />
+                  {calendarSelect}
                   <button type="button" className="nmd-home-quickadd-submit" onClick={addQuickMeeting}>Add</button>
                   <button type="button" className="nmd-home-quickadd-cancel" onClick={() => { setQuickAddMeeting(false); setMeetingText(''); setMeetingTime(''); }} aria-label="Cancel">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -339,13 +368,13 @@ export default function HomePane({
               <h3>Meetings</h3>
               <ul className="nmd-home-list nmd-home-pages">
                 {sortedTodayMeetings.map(m => {
-                  const notesPreview = (m.notes || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+                  const notesPreview = previewText(m.notes);
                   return (
                     <li key={m.id}>
                       <button
                         type="button"
                         className={'nmd-home-page' + (isMeetingOver(today, m) ? ' done' : '')}
-                        onClick={() => onOpenTrackerItem({ dateKey: todayKey, meetingId: m.id })}
+                        onClick={() => onOpenTrackerItem({ dateKey: todayKey, meetingId: m.id, ...focusFor(m) })}
                       >
                         <HomeListRail variant="meeting" />
                         <span className="nmd-home-page-body">
@@ -355,6 +384,7 @@ export default function HomePane({
                           )}
                         </span>
                         <span className="nmd-home-page-meta">
+                          {calendarTag(m)}
                           <span>{fmtTime(m.time) || 'No time'}</span>
                           {m.duration && (
                             <>
@@ -379,7 +409,7 @@ export default function HomePane({
             <div className="nmd-home-sub">
               <h3>Tasks</h3>
               {todayTasks.length === 0 ? (
-                <div className="nmd-home-empty">No tasks for today.</div>
+                <div className="nmd-home-empty">No tasks today. Enjoy it.</div>
               ) : (
                 <ul className="nmd-home-list nmd-home-pages">
                   {todayTasks.map(t => (
@@ -388,11 +418,11 @@ export default function HomePane({
                         className={'nmd-home-page nmd-home-task-row' + (t.done ? ' done' : '')}
                         role="button"
                         tabIndex={0}
-                        onClick={() => onOpenTrackerItem({ dateKey: todayKey, taskId: t.id })}
+                        onClick={() => onOpenTrackerItem({ dateKey: todayKey, taskId: t.id, ...focusFor(t) })}
                         onKeyDown={e => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            onOpenTrackerItem({ dateKey: todayKey, taskId: t.id });
+                            onOpenTrackerItem({ dateKey: todayKey, taskId: t.id, ...focusFor(t) });
                           }
                         }}
                       >
@@ -411,6 +441,7 @@ export default function HomePane({
                         <span className="nmd-home-page-body">
                           <span className="nmd-home-page-title">{t.title || 'Untitled'}</span>
                         </span>
+                        {labelled && <span className="nmd-home-page-meta">{calendarTag(t)}</span>}
                         {t.priority && t.priority !== 'none' && (
                           <span className="nmd-home-page-meta" title={`${t.priority} priority`}>
                             <span className={`nmd-task-prio-dot nmd-prio-${t.priority}`} aria-label={`${t.priority} priority`} />

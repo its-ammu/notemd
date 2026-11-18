@@ -1,6 +1,8 @@
 /* NoteMD's markdown extensions. Applied in MarkdownView, so they cover both the
    in-app preview and public shared pages. */
 
+import { MARKER, INLINE_NODE, canOpen, canClose } from './highlight.js';
+
 /* ---------------------------------------------------------------- underline */
 
 /* Minimal unist walker — visits every node of `type`. */
@@ -27,6 +29,104 @@ export function remarkUnderline() {
       node.data = { ...node.data, hName: 'u' };
     });
   };
+}
+
+/* ---------------------------------------------------------------- highlight */
+
+/* GFM turns a bare URL into a link and lets it swallow a closing marker
+   (`==https://example.com==` links to `…com==`). Hand the marker back: returns
+   the link without it, or null when `node` isn't a bare-URL link ending in one. */
+function unswallowMarker(node) {
+  if (node.type !== 'link' || !node.url.endsWith(MARKER)) return null;
+  const only = node.children.length === 1 ? node.children[0] : null;
+  if (only?.type !== 'text' || !only.value.endsWith(MARKER)) return null;
+  // Bare URLs have no `[…](…)` around them, so the node is exactly its text.
+  const { start, end } = node.position || {};
+  if (start?.offset == null || end.offset - start.offset !== only.value.length) return null;
+  return {
+    ...node,
+    url: node.url.slice(0, -MARKER.length),
+    children: [{ ...only, value: only.value.slice(0, -MARKER.length) }],
+  };
+}
+
+/* Rebuild one parent's inline children, wrapping each `==…==` run in a node
+   that renders as <mark>. Returns null when nothing was highlighted, so
+   untouched parents keep their original nodes (and source positions). */
+function markChildren(children) {
+  if (!children.some((c) => c.type === 'text' && c.value.includes(MARKER))) return null;
+
+  const out = [];
+  let open = null; // nodes collected since an opening marker, or null
+  let marked = false;
+  const emit = (node) => (open || out).push(node);
+  const emitText = (value) => { if (value) emit({ type: 'text', value }); };
+  // An opener that never found its closer goes back to being literal text.
+  const abandon = () => {
+    out.push({ type: 'text', value: MARKER }, ...open);
+    open = null;
+  };
+  const close = () => {
+    // `emphasis` so every mdast consumer knows the shape; hName swaps the tag.
+    out.push({ type: 'emphasis', children: open, data: { hName: 'mark' } });
+    open = null;
+    marked = true;
+  };
+
+  children.forEach((child, ci) => {
+    if (child.type === 'break') { if (open) abandon(); out.push(child); return; }
+    if (child.type !== 'text') {
+      const freed = open && unswallowMarker(child);
+      if (freed) { open.push(freed); close(); } else emit(child);
+      return;
+    }
+
+    const v = child.value;
+    let last = 0;
+    for (let i = 0; i < v.length; i++) {
+      if (v[i] === '\n') {
+        // Highlights never span a line break (the editor works line by line).
+        if (open) { emitText(v.slice(last, i)); abandon(); last = i; }
+        continue;
+      }
+      if (!v.startsWith(MARKER, i)) continue;
+      const before = i > 0 ? v[i - 1] : (ci > 0 ? INLINE_NODE : undefined);
+      const after = i + 2 < v.length ? v[i + 2] : (ci < children.length - 1 ? INLINE_NODE : undefined);
+      if (!open) {
+        if (!canOpen(before, after)) continue;
+        emitText(v.slice(last, i));
+        open = [];
+      } else {
+        if (!(open.length || i > last) || !canClose(before, after)) continue;
+        emitText(v.slice(last, i));
+        close();
+      }
+      last = i + 2;
+      i += 1; // step over the second `=`
+    }
+    emitText(v.slice(last));
+  });
+  if (open) abandon();
+  return marked ? out : null;
+}
+
+function markTree(node) {
+  if (!node.children) return;
+  node.children.forEach(markTree);
+  const next = markChildren(node.children);
+  if (next) node.children = next;
+}
+
+/**
+ * remarkHighlight — renders `==text==` as a highlighter stroke (<mark>).
+ *
+ * Works on the parsed tree rather than the source, so markers inside code are
+ * never touched and a highlight can wrap other inline formatting
+ * (`==some **bold** words==`). The open/close rules live in ./highlight so the
+ * editor decorates exactly the same ranges.
+ */
+export function remarkHighlight() {
+  return (tree) => markTree(tree);
 }
 
 /* ------------------------------------------------------------ spaced links */

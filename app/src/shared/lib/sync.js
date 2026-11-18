@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { ensureKey } from './encKey';
 import { IMAGE_BUCKET, IMAGE_REF_SCHEME } from './uploadImage';
+import { calendarIdSet } from '../utils/calendars';
 import {
   encryptText, decryptText,
   encryptTags, decryptTags,
@@ -13,15 +14,27 @@ import {
 export async function fetchAllData() {
   const key = await ensureKey();
 
-  const [nbsRes, pgsRes, tsRes, msRes] = await Promise.all([
+  const [nbsRes, pgsRes, tsRes, msRes, calsRes] = await Promise.all([
     supabase.from('notebooks').select('*').order('position', { ascending: true }),
     supabase.from('pages').select('*').order('position', { ascending: true }),
     supabase.from('tasks').select('*').order('position', { ascending: true }),
     supabase.from('meetings').select('*'),
+    supabase.from('calendars').select('*')
+      .order('position', { ascending: true })
+      .order('created_at', { ascending: true }),
   ]);
 
   const err = nbsRes.error || pgsRes.error || tsRes.error || msRes.error;
   if (err) throw err;
+
+  // Calendars are optional. If the table can't be read — most likely because
+  // the add_calendars migration hasn't been run on this project yet — carry on
+  // exactly as before calendars existed: nothing is shown or written for them,
+  // and `calendar_id` is never sent, so task and meeting sync is untouched.
+  const calendarsSupported = !calsRes.error;
+  if (calsRes.error && !isMissingTable(calsRes)) {
+    console.warn('[NoteMD] Calendars unavailable for this session', calsRes.error);
+  }
 
   // Detect rows still stored as plaintext (written before encryption shipped).
   // The one-time migration only needs to re-upload when these actually exist —
@@ -99,6 +112,7 @@ export async function fetchAllData() {
     subtasks: await decryptJson(key, t.subtasks),
     linkedPageId: t.linked_page_id || null,
     created: new Date(t.created_at).getTime(),
+    ...(t.calendar_id ? { calendarId: t.calendar_id } : null),
   })));
 
   const tasksByDate = {};
@@ -118,6 +132,7 @@ export async function fetchAllData() {
     linkedPageId: m.linked_page_id || null,
     skipDates: Array.isArray(m.skip_dates) ? m.skip_dates : [],
     endDate: m.end_date || null,
+    ...(m.calendar_id ? { calendarId: m.calendar_id } : null),
   })));
 
   const meetingsByDate = {};
@@ -126,7 +141,30 @@ export async function fetchAllData() {
     (meetingsByDate[day] || (meetingsByDate[day] = [])).push(meeting);
   });
 
-  return { notebooks, tasksByDate, meetingsByDate, needsEncryptionMigration };
+  // Only one row may speak for the default calendar. Two devices renaming it
+  // at the same moment can each create one; the oldest wins and the others are
+  // left alone (nothing ever points at them).
+  let sawDefault = false;
+  const calendarRows = [...(calendarsSupported ? calsRes.data || [] : [])]
+    .sort((a, b) => (a.position - b.position) || String(a.created_at).localeCompare(String(b.created_at)))
+    .filter(c => {
+      if (!c.is_default) return true;
+      if (sawDefault) return false;
+      sawDefault = true;
+      return true;
+    });
+  const calendars = await Promise.all(calendarRows.map(async c => ({
+    id: c.id,
+    name: await decryptText(key, c.name || ''),
+    isDefault: !!c.is_default,
+  })));
+
+  return { notebooks, tasksByDate, meetingsByDate, calendars, calendarsSupported, needsEncryptionMigration };
+}
+
+function isMissingTable(res) {
+  const code = res.error?.code;
+  return code === 'PGRST205' || code === '42P01' || res.status === 404;
 }
 
 // ---------- Flatten client state -> rows ----------
@@ -167,7 +205,27 @@ async function flattenPages(key, notebooks, userId) {
   return Promise.all(rows);
 }
 
-async function flattenTasks(key, tasksByDate, userId) {
+async function flattenCalendars(key, calendars, userId) {
+  return Promise.all((calendars || []).map(async (c, i) => ({
+    id: c.id,
+    user_id: userId,
+    name: await encryptText(key, c.name || ''),
+    position: i,
+    is_default: !!c.isDefault,
+  })));
+}
+
+// `calIds` is the set of calendars an item may point at, or null when calendars
+// aren't available — in which case `calendar_id` is left out of the row
+// entirely, so an upsert neither needs the column nor disturbs what's in it.
+// An id that isn't in the set (a deleted calendar, a foreign backup) is sent as
+// null, i.e. the default calendar, rather than risking a dangling reference.
+function calendarCol(item, calIds) {
+  if (!calIds) return null;
+  return { calendar_id: item.calendarId && calIds.has(item.calendarId) ? item.calendarId : null };
+}
+
+async function flattenTasks(key, tasksByDate, userId, calIds) {
   const rows = [];
   Object.entries(tasksByDate).forEach(([day, list]) => {
     list.forEach((t, i) => {
@@ -181,13 +239,14 @@ async function flattenTasks(key, tasksByDate, userId) {
         position: i,
         subtasks: await encryptJson(key, t.subtasks),
         linked_page_id: t.linkedPageId || null,
+        ...calendarCol(t, calIds),
       }))());
     });
   });
   return Promise.all(rows);
 }
 
-async function flattenMeetings(key, meetingsByDate, userId) {
+async function flattenMeetings(key, meetingsByDate, userId, calIds) {
   const rows = [];
   Object.entries(meetingsByDate).forEach(([day, list]) => {
     list.forEach(m => {
@@ -203,6 +262,7 @@ async function flattenMeetings(key, meetingsByDate, userId) {
         linked_page_id: m.linkedPageId || null,
         skip_dates: m.skipDates || [],
         end_date: m.endDate || null,
+        ...calendarCol(m, calIds),
       }))());
     });
   });
@@ -250,6 +310,28 @@ async function pushTable(table, { upsert, remove }) {
     const { error } = await supabase.from(table).delete().in('id', remove);
     if (error) throw error;
   }
+}
+
+// Tasks and meetings that carry a `calendar_id`. If a calendar was deleted on
+// another device since this one loaded, rows still pointing at it would be
+// rejected and — because a failed push is retried whole — block every later
+// save. Mirror what the database does on delete instead: those rows fall back
+// to the default calendar.
+async function pushCalendarItems(table, { upsert, remove }) {
+  try {
+    await pushTable(table, { upsert, remove: [] });
+  } catch (error) {
+    const dangling = error?.code === '23503' && /calendar_id/.test(`${error.message} ${error.details}`);
+    if (!dangling) throw error;
+    const { data, error: listError } = await supabase.from('calendars').select('id');
+    if (listError) throw error;
+    const live = new Set((data || []).map(c => c.id));
+    await pushTable(table, {
+      upsert: upsert.map(r => (r.calendar_id && !live.has(r.calendar_id) ? { ...r, calendar_id: null } : r)),
+      remove: [],
+    });
+  }
+  await pushTable(table, { upsert: [], remove });
 }
 
 export async function fetchPomoSessions() {
@@ -377,24 +459,33 @@ async function cleanupOrphanedImages(prev, next) {
   if (error) throw error;
 }
 
-export async function pushChanges(userId, prev, next) {
+// `opts.calendars` says whether this project has the calendars table (see
+// fetchAllData). When it doesn't, calendars are skipped altogether and the
+// rows written for tasks and meetings are identical to what they always were.
+export async function pushChanges(userId, prev, next, opts = {}) {
   const key = await ensureKey();
-  const [prevNbs, nextNbs, prevPgs, nextPgs, prevTs, nextTs, prevMs, nextMs] =
+  const withCalendars = !!opts.calendars;
+  const prevCalIds = withCalendars ? calendarIdSet(prev.calendars) : null;
+  const nextCalIds = withCalendars ? calendarIdSet(next.calendars) : null;
+  const [prevNbs, nextNbs, prevPgs, nextPgs, prevTs, nextTs, prevMs, nextMs, prevCals, nextCals] =
     await Promise.all([
       flattenNotebooks(key, prev.notebooks, userId),
       flattenNotebooks(key, next.notebooks, userId),
       flattenPages(key, prev.notebooks, userId),
       flattenPages(key, next.notebooks, userId),
-      flattenTasks(key, prev.tasksByDate, userId),
-      flattenTasks(key, next.tasksByDate, userId),
-      flattenMeetings(key, prev.meetingsByDate, userId),
-      flattenMeetings(key, next.meetingsByDate, userId),
+      flattenTasks(key, prev.tasksByDate, userId, prevCalIds),
+      flattenTasks(key, next.tasksByDate, userId, nextCalIds),
+      flattenMeetings(key, prev.meetingsByDate, userId, prevCalIds),
+      flattenMeetings(key, next.meetingsByDate, userId, nextCalIds),
+      withCalendars ? flattenCalendars(key, prev.calendars, userId) : [],
+      withCalendars ? flattenCalendars(key, next.calendars, userId) : [],
     ]);
 
   const nbsDiff = diff(prevNbs, nextNbs);
   const pgsDiff = diff(prevPgs, nextPgs);
   const tsDiff  = diff(prevTs,  nextTs);
   const msDiff  = diff(prevMs,  nextMs);
+  const calsDiff = diff(prevCals, nextCals);
 
   // Order: upsert parents before children; delete children before parents.
   // Pages depend on notebooks, so: upsert notebooks, then pages; delete pages, then notebooks.
@@ -402,8 +493,17 @@ export async function pushChanges(userId, prev, next) {
   await pushTable('notebooks', { upsert: nbsDiff.upsert, remove: [] });
   await pushTable('pages',     pgsDiff);
   await pushTable('notebooks', { upsert: [], remove: nbsDiff.remove });
-  await pushTable('tasks',     tsDiff);
-  await pushTable('meetings',  msDiff);
+  // Same idea for calendars: a new calendar must exist before anything points
+  // at it, and a deleted one goes only after its items have been moved off it.
+  if (withCalendars) {
+    await pushTable('calendars', { upsert: calsDiff.upsert, remove: [] });
+    await pushCalendarItems('tasks', tsDiff);
+    await pushCalendarItems('meetings', msDiff);
+    await pushTable('calendars', { upsert: [], remove: calsDiff.remove });
+  } else {
+    await pushTable('tasks',     tsDiff);
+    await pushTable('meetings',  msDiff);
+  }
 
   // Best-effort: reclaim bucket storage for images removed from notes. Runs
   // after the data sync succeeds so a storage hiccup can't lose note content.
