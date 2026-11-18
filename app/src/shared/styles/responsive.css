@@ -265,14 +265,17 @@
   .nmd-modal-body { padding: 12px 14px; }
 }
 
-/* Local `outline: none` (used so inputs can show a border instead) would
-   otherwise beat the token focus ring, which is declared earlier. */
+/* Local `outline: none` would otherwise beat the token focus ring, which is
+   declared earlier. Text fields are left out on purpose: browsers count every
+   focus of a text field as :focus-visible — mouse clicks included — and those
+   fields already show focus with their own border. */
 button:focus-visible,
 a:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
 select:focus-visible,
-[tabindex]:focus-visible {
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible,
+input[type="range"]:focus-visible,
+[tabindex]:not([contenteditable]):not(input):not(textarea):focus-visible {
   outline: 2px solid var(--focus-ring) !important;
   outline-offset: 2px;
 }
