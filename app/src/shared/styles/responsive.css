@@ -166,6 +166,15 @@
   .nmd-tracker-title h1 { font-size: 18px; }
   .nmd-tracker-spacer { display: none; }
   .nmd-tracker-nav { flex-wrap: wrap; }
+  .nmd-cal-switch { height: 32px; }
+  /* No hover on touch: the edit pencil is always there. */
+  .nmd-cal-menu .nmd-cal-edit { opacity: 1; width: 34px; height: 34px; }
+  .nmd-cal-menu .nmd-cal-pick { padding-top: 9px; padding-bottom: 9px; }
+  .nmd-cal-menu .nmd-inline-form input { font-size: 16px; }
+  .nmd-home-quickadd-cal { max-width: none; flex: 1; min-width: 0; height: 40px; }
+  /* With a calendar picker in the row there's no room for the title beside it. */
+  .nmd-home-quickadd-form.with-cal { flex-wrap: wrap; }
+  .nmd-home-quickadd-form.with-cal input[type="text"] { flex: 1 1 100%; }
   .nmd-week-stats { width: 100%; gap: 6px; flex-wrap: wrap; font-size: 11px; }
   .nmd-view-toggle button { padding: 5px 9px; font-size: 11px; }
 
@@ -196,6 +205,17 @@
     padding: 10px 12px 14px;
   }
   .nmd-day-empty { padding: 14px 10px; }
+
+  /* Loading outline: no rail on phones */
+  .nmd-loading-shell { grid-template-columns: 1fr; }
+  .nmd-loading-rail { display: none; }
+
+  /* Day view: stack the two pages, schedule under tasks */
+  .nmd-day-body.nmd-day-split { display: flex; flex-direction: column; overflow: visible; padding: 0; }
+  .nmd-day-pane + .nmd-day-pane { border-left: none; border-top: 1px solid var(--border); }
+  .nmd-day-pane-head { padding: 12px 14px 6px; }
+  .nmd-day-pane-body { overflow-y: visible; padding: 0 12px 14px; }
+  .nmd-day-pane-add { width: 34px; height: 34px; }
 
   /* Modals / dialogs: edge-to-edge with small gutters */
   .nmd-modal-backdrop { padding-top: 6vh; padding-left: 12px; padding-right: 12px; }
@@ -234,6 +254,7 @@
   .nmd-mtg-input,
   .nmd-palette input { font-size: 16px; }
   .nmd-pane-write textarea { font-size: 14.5px; }
+
 }
 
 @media (max-width: 420px) {
@@ -244,9 +265,38 @@
   .nmd-modal-body { padding: 12px 14px; }
 }
 
+/* Local `outline: none` would otherwise beat the token focus ring, which is
+   declared earlier. Text fields are left out on purpose: browsers count every
+   focus of a text field as :focus-visible — mouse clicks included — and those
+   fields already show focus with their own border. */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible,
+input[type="range"]:focus-visible,
+[tabindex]:not([contenteditable]):not(input):not(textarea):focus-visible {
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 2px;
+}
+
 /* Calm by request — and still for those who ask for no motion at all */
 @media (prefers-reduced-motion: reduce) {
   .nmd-boombox.playing .nmd-doodle-spool,
   .nmd-radio-eq.playing span,
-  .nmd-rail-live { animation: none; }
+  .nmd-rail-live,
+  .nmd-skel { animation: none; }
+  .nmd-tl-block:hover { transform: none; }
+}
+
+/* Touch screens have no hover, so controls that normally appear on hover
+   are always shown there. */
+@media (hover: none) {
+  .nmd-day-btn,
+  .nmd-add-task,
+  .nmd-cal-menu .nmd-cal-edit,
+  .nmd-radio-cassette-wrap.custom .nmd-radio-cassette-actions { opacity: 1; }
+  .nmd-subtask-delete { opacity: 0.7; }
+  .nmd-cm-imgblock .nmd-cm-imgbar { opacity: 1; pointer-events: auto; }
+  .nmd-tl-block:hover { transform: none; box-shadow: var(--shadow-sm); }
 }

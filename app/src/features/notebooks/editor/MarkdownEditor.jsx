@@ -12,6 +12,7 @@ import {
 } from '../../../shared/lib/uploadImage';
 import { mdTheme, mdSyntaxHighlight } from './theme.js';
 import { createSearchPanel } from './searchPanel.js';
+import { highlightMarks, toggleHighlight } from './highlightMarks.js';
 import { isTauri, isExternalHref, openExternal } from '../../../shared/lib/openExternal';
 
 
@@ -556,6 +557,7 @@ export default function MarkdownEditor({ value, onChange, notebooks = [] }) {
           { key: 'Mod-i', run: wrapSelection('*'), preventDefault: true },
           { key: 'Mod-u', run: wrapSelection('__'), preventDefault: true },
           { key: 'Mod-e', run: wrapSelection('`'), preventDefault: true },
+          { key: 'Mod-Shift-h', run: toggleHighlight, preventDefault: true },
           { key: 'Mod-k', run: insertLink, preventDefault: true },
           ...completionKeymap,
           ...foldKeymap,
@@ -575,6 +577,7 @@ export default function MarkdownEditor({ value, onChange, notebooks = [] }) {
         mdSyntaxHighlight,
         refChips, // render image/page-link markdown as compact styled chips
         underlineMarks, // `__text__` reads as underline, not bold
+        highlightMarks, // `==text==` gets its highlighter stroke while you write
         mdTheme,
         updateListener,
         EditorView.lineWrapping,
@@ -651,6 +654,7 @@ export default function MarkdownEditor({ value, onChange, notebooks = [] }) {
           {tbBtn(<TbIcon><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></TbIcon>, 'Bold (⌘B)', () => run(wrapSelection('**')))}
           {tbBtn(<TbIcon><line x1="19" y1="4" x2="10" y2="4" /><line x1="14" y1="20" x2="5" y2="20" /><line x1="15" y1="4" x2="9" y2="20" /></TbIcon>, 'Italic (⌘I)', () => run(wrapSelection('*')))}
           {tbBtn(<TbIcon><path d="M6 4v6a6 6 0 0 0 12 0V4" /><line x1="4" y1="20" x2="20" y2="20" /></TbIcon>, 'Underline (⌘U)', () => run(wrapSelection('__')))}
+          {tbBtn(<TbIcon><path d="m9 11-6 6v3h9l3-3" /><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" /></TbIcon>, 'Highlight (⌘⇧H)', () => run(toggleHighlight))}
           {tbBtn(<TbIcon><path d="m16 18 6-6-6-6" /><path d="m8 6-6 6 6 6" /></TbIcon>, 'Inline code (⌘E)', () => run(wrapSelection('`')))}
           <span className="nmd-md-tb-sep" />
           {tbBtn(<TbIcon><path d="M4 12h8" /><path d="M4 18V6" /><path d="M12 18V6" /><path d="m17 12 3-2v8" /></TbIcon>, 'Heading 1', () => run(setHeadingLevel(1)))}

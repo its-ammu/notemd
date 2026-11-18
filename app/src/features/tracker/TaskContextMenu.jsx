@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DoodleClockMini } from '../../shared/components/Doodles';
 
-export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, onClose }) {
+export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, onMoveTomorrow, onDelete, onClose }) {
   const [step, setStep] = useState('menu'); // 'menu' | 'custom'
   const [workMins, setWorkMins] = useState(25);
   const [breakMins, setBreakMins] = useState(5);
@@ -61,6 +61,25 @@ export default function TaskContextMenu({ x, y, onStartPomodoro, onDuplicate, on
             </svg>
             Duplicate
           </button>
+          {onMoveTomorrow && (
+            <button className="nmd-ctx-item" onClick={(e) => { e.stopPropagation(); onMoveTomorrow(); onClose(); }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12.5c4.5-.4 10-.6 15-.3" />
+                <path d="M14.5 7.5c1.8 1.6 3.3 3 4.6 4.6-1.4 1.5-2.9 3-4.6 4.5" />
+              </svg>
+              Move to tomorrow
+            </button>
+          )}
+          {onDelete && (
+            <button className="nmd-ctx-item danger" onClick={(e) => { e.stopPropagation(); onDelete(); onClose(); }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4.5 6.5h15" />
+                <path d="M9.5 6.2V4.3h5v1.9" />
+                <path d="M6.5 6.8l.9 12.4c.1.9.7 1.4 1.5 1.4h6.2c.8 0 1.4-.5 1.5-1.4l.9-12.4" />
+              </svg>
+              Delete
+            </button>
+          )}
         </>
       ) : (
         <div className="nmd-ctx-custom">

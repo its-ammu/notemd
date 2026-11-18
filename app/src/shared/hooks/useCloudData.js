@@ -5,18 +5,22 @@ import { clearKey } from '../lib/encKey';
 // One-time, per-device flag: when set, the backlog of rows written before
 // encryption was enabled has already been re-uploaded as ciphertext.
 const MIGRATION_FLAG = 'notemd_enc_migrated_v1';
-const EMPTY = { notebooks: [], tasksByDate: {}, meetingsByDate: {} };
+const EMPTY = { notebooks: [], tasksByDate: {}, meetingsByDate: {}, calendars: [] };
 
 export function useCloudData(userId) {
   const [notebooks, setNotebooks] = useState([]);
   const [tasksByDate, setTasksByDate] = useState({});
   const [meetingsByDate, setMeetingsByDate] = useState({});
+  // Tracker calendars. `calendarsSupported` is false until the database has the
+  // calendars table (see fetchAllData) — the feature simply stays out of sight.
+  const [calendars, setCalendars] = useState([]);
+  const [calendarsSupported, setCalendarsSupported] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
   // Last state we've pushed (or hydrated from) — used as the diff baseline.
-  const baseline = useRef({ notebooks: [], tasksByDate: {}, meetingsByDate: {} });
+  const baseline = useRef(EMPTY);
   const flushTimer = useRef(null);
   const pushing = useRef(false);
 
@@ -27,7 +31,9 @@ export function useCloudData(userId) {
       setNotebooks([]);
       setTasksByDate({});
       setMeetingsByDate({});
-      baseline.current = { notebooks: [], tasksByDate: {}, meetingsByDate: {} };
+      setCalendars([]);
+      setCalendarsSupported(false);
+      baseline.current = EMPTY;
       clearKey();
       return;
     }
@@ -40,6 +46,8 @@ export function useCloudData(userId) {
         setNotebooks(data.notebooks);
         setTasksByDate(data.tasksByDate);
         setMeetingsByDate(data.meetingsByDate);
+        setCalendars(data.calendars);
+        setCalendarsSupported(data.calendarsSupported);
         baseline.current = data;
         setLoaded(true);
         // One-time migration: re-upload everything so rows stored as plaintext
@@ -50,7 +58,9 @@ export function useCloudData(userId) {
         // bump its updated_at) on every new device/browser.
         if (!localStorage.getItem(MIGRATION_FLAG)) {
           try {
-            if (data.needsEncryptionMigration) await pushChanges(userId, EMPTY, data);
+            if (data.needsEncryptionMigration) {
+              await pushChanges(userId, EMPTY, data, { calendars: data.calendarsSupported });
+            }
             localStorage.setItem(MIGRATION_FLAG, '1');
           } catch (e) {
             console.warn('[NoteMD] Encryption migration deferred to next load', e);
@@ -75,7 +85,8 @@ export function useCloudData(userId) {
     const changed =
       notebooks !== baseline.current.notebooks ||
       tasksByDate !== baseline.current.tasksByDate ||
-      meetingsByDate !== baseline.current.meetingsByDate;
+      meetingsByDate !== baseline.current.meetingsByDate ||
+      calendars !== baseline.current.calendars;
     if (!changed) return;
 
     setSaving(true);
@@ -84,8 +95,8 @@ export function useCloudData(userId) {
       if (pushing.current) return;
       pushing.current = true;
       try {
-        const next = { notebooks, tasksByDate, meetingsByDate };
-        await pushChanges(userId, baseline.current, next);
+        const next = { notebooks, tasksByDate, meetingsByDate, calendars };
+        await pushChanges(userId, baseline.current, next, { calendars: calendarsSupported });
         baseline.current = next;
         setError(null);
       } catch (err) {
@@ -97,12 +108,13 @@ export function useCloudData(userId) {
       }
     }, 600);
     return () => { if (flushTimer.current) clearTimeout(flushTimer.current); };
-  }, [userId, loaded, notebooks, tasksByDate, meetingsByDate]);
+  }, [userId, loaded, notebooks, tasksByDate, meetingsByDate, calendars, calendarsSupported]);
 
   return {
     notebooks, setNotebooks,
     tasksByDate, setTasksByDate,
     meetingsByDate, setMeetingsByDate,
+    calendars, setCalendars, calendarsSupported,
     loaded, error, saving,
   };
 }

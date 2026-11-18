@@ -61,6 +61,9 @@
   --accent-tint:      rgba(81, 103, 244, 0.08);
   --accent-tint-strong: rgba(81, 103, 244, 0.14);
 
+  /* Highlighter ink — the stroke behind `==text==` in notes */
+  --marker:           rgba(255, 214, 10, 0.42);
+
   /* Semantic accents */
   --link:             var(--accent-blue);
   --danger:           var(--accent-rose);
@@ -162,11 +165,15 @@
   --accent-tint:      rgba(109, 128, 246, 0.12);
   --accent-tint-strong: rgba(109, 128, 246, 0.2);
 
-  /* Shadows */
-  --shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-card:    0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.25);
-  --shadow-float:   0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 32px rgba(0, 0, 0, 0.4);
-  --shadow-overlay: 0 4px 8px rgba(0, 0, 0, 0.3), 0 24px 64px rgba(0, 0, 0, 0.55);
+  /* Highlighter ink */
+  --marker:           rgba(250, 204, 21, 0.27);
+
+  /* Shadows — a hairline of light plus a deeper fall, so a sheet still
+     lifts off the dark canvas (a plain black shadow disappears there). */
+  --shadow-sm:      0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-card:    0 0 0 1px rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.45);
+  --shadow-float:   0 0 0 1px rgba(255, 255, 255, 0.07), 0 8px 28px rgba(0, 0, 0, 0.55);
+  --shadow-overlay: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.6);
 
   /* Paper texture color */
   --paper-texture:  rgba(255, 255, 255, 0.09);
@@ -239,6 +246,18 @@
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
+}
+
+/* `==text==` — a highlighter stroke: translucent so the ink shows through,
+   corners a little uneven like a real pass of the pen. */
+.prose mark {
+  background: var(--marker);
+  color: inherit;
+  padding: 0.08em 0.2em;
+  margin: 0 -0.06em;
+  border-radius: 0.3em 0.45em 0.35em 0.5em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .prose code, .code-inline {

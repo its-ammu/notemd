@@ -69,7 +69,7 @@ export default function MeetingsDrawer({ days, getMeetings, onAddMeeting, onEdit
                   </button>
                 </div>
                 {mtgs.length === 0 ? (
-                  <div className="nmd-mtg-drawer-empty">—</div>
+                  <div className="nmd-mtg-drawer-empty">None</div>
                 ) : (
                   <ul className="nmd-mtg-drawer-list">
                     {mtgs.map(m => (

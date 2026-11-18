@@ -5,18 +5,22 @@ import HomePane from './features/home/HomePane';
 import AuthScreen, { ResetPasswordScreen } from './features/auth/AuthScreen';
 import PomodoroTimer from './features/pomodoro/PomodoroTimer';
 import RadioPane from './features/radio/RadioPane';
+import LoadingShell from './shared/components/LoadingShell';
 import { useRadio } from './features/radio/useRadio';
 import { useStoredState } from './shared/hooks/useStoredState';
 import { useAuth } from './shared/hooks/useAuth';
 import { useCloudData } from './shared/hooks/useCloudData';
 import { useProfile } from './shared/hooks/useProfile';
-import { TWEAK_DEFAULTS } from './shared/utils/constants';
+import { NB_COLORS, TWEAK_DEFAULTS } from './shared/utils/constants';
 import { isSupabaseConfigured } from './shared/lib/supabase';
 import { fetchPomoSessions, insertPomoSession } from './shared/lib/sync';
 import NavRail from './shared/components/NavRail';
 import SettingsModal from './shared/components/SettingsModal';
 import HowToModal from './shared/components/HowToModal';
 import { useToast } from './shared/hooks/useToast';
+import { useCalendars } from './features/tracker/useCalendars';
+import CommandPalette from './shared/components/CommandPalette';
+import { sanitizeCalendarRows } from './shared/utils/calendars';
 
 function App() {
   const {
@@ -27,8 +31,15 @@ function App() {
     notebooks, setNotebooks,
     tasksByDate, setTasksByDate,
     meetingsByDate, setMeetingsByDate,
+    calendars: calendarRows, setCalendars, calendarsSupported,
     loaded, error: syncError, saving,
   } = useCloudData(user?.id || null);
+  // Tracker calendars — null until the database supports them.
+  const calendars = useCalendars({
+    supported: calendarsSupported,
+    calendars: calendarRows, setCalendars,
+    tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate,
+  });
   const { profile, updateProfile } = useProfile(user?.id || null, user?.email);
 
   const prefs = profile?.preferences || {};
@@ -127,13 +138,7 @@ function App() {
     );
   }
 
-  if (authLoading) {
-    return (
-      <div className="nmd-auth-shell">
-        <div className="nmd-auth-card" style={{ textAlign: 'center' }}>Loading…</div>
-      </div>
-    );
-  }
+  if (authLoading) return <LoadingShell label="Opening NoteMD…" />;
 
   if (user && passwordRecovery) {
     return <ResetPasswordScreen onUpdatePassword={updatePassword} onDone={clearPasswordRecovery} />;
@@ -143,17 +148,15 @@ function App() {
     return <AuthScreen onSignIn={signIn} onSignUp={signUp} onResetPassword={resetPassword} />;
   }
 
+  if (!loaded && !syncError) return <LoadingShell />;
+
   if (!loaded) {
     return (
       <div className="nmd-auth-shell">
         <div className="nmd-auth-card" style={{ textAlign: 'center' }}>
-          {syncError ? (
-            <>
-              <h1>Couldn't load your data</h1>
-              <p className="nmd-auth-sub">{syncError}</p>
-              <button className="nmd-btn" onClick={() => signOut()}>Sign out</button>
-            </>
-          ) : 'Loading your notebooks…'}
+          <h1>Couldn't load your data</h1>
+          <p className="nmd-auth-sub">{syncError}</p>
+          <button className="nmd-btn" onClick={() => signOut()}>Sign out</button>
         </div>
       </div>
     );
@@ -163,6 +166,7 @@ function App() {
     const payload = {
       app: 'NoteMD', version: 1, exportedAt: new Date().toISOString(),
       notebooks, tasksByDate, meetingsByDate,
+      ...(calendarRows.length ? { calendars: calendarRows } : null),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -184,6 +188,9 @@ function App() {
         if (data.notebooks) setNotebooks(data.notebooks);
         if (data.tasksByDate) setTasksByDate(data.tasksByDate);
         if (data.meetingsByDate) setMeetingsByDate(data.meetingsByDate);
+        // Backups made before calendars existed simply don't have any; their
+        // tasks and meetings land on the default calendar.
+        if (calendarsSupported && Array.isArray(data.calendars)) setCalendars(sanitizeCalendarRows(data.calendars));
         showToast('Backup restored');
         setShowSettings(false);
       } catch (err) {
@@ -198,8 +205,23 @@ function App() {
     setNotebooks([]);
     setTasksByDate({});
     setMeetingsByDate({});
+    if (calendarsSupported) setCalendars([]);
     setActiveSel({ nbId: null, pageId: null });
     showToast('Data cleared');
+  };
+
+  const createPage = () => {
+    const host = notebooks.find(n => n.id === activeSel?.nbId) || notebooks[0];
+    const page = { id: crypto.randomUUID(), title: '', body: '', created: Date.now(), updated: Date.now() };
+    if (!host) {
+      const id = crypto.randomUUID();
+      setNotebooks([{ id, name: 'Notebook', color: NB_COLORS[0].color, paper: 'plain', pages: [page] }]);
+      setActiveSel({ nbId: id, pageId: page.id });
+    } else {
+      setNotebooks(nbs => nbs.map(n => n.id === host.id ? { ...n, pages: [page, ...n.pages] } : n));
+      setActiveSel({ nbId: host.id, pageId: page.id });
+    }
+    setTab('notebooks');
   };
 
   const handleSignOut = async () => {
@@ -211,6 +233,15 @@ function App() {
     <div
       className={'nmd-app-shell' + (tab === 'tracker' || tab === 'home' || tab === 'radio' ? ' tracker-layout' : '')}
     >
+      <CommandPalette
+        notebooks={notebooks}
+        calendars={calendars}
+        onGoToTab={setTab}
+        onOpenPage={(nbId, pageId) => { setActiveSel({ nbId, pageId }); setTab('notebooks'); }}
+        onOpenTracker={(focus) => { setTrackerFocus(focus); setTab('tracker'); }}
+        onNewPage={createPage}
+        onShowCalendar={(id) => { calendars?.setActiveId(id); setTab('tracker'); }}
+      />
       <NavRail
         tab={tab}
         setTab={setTab}
@@ -231,6 +262,7 @@ function App() {
           onGoToTab={setTab}
           onOpenTrackerItem={(focus) => { setTrackerFocus(focus); setTab('tracker'); }}
           pomoStats={pomoStats}
+          calendars={calendars}
         />
       )}
       {tab === 'notebooks' && (
@@ -259,6 +291,7 @@ function App() {
           onFocusHandled={() => setTrackerFocus(null)}
           meetingsDisplay={prefs.meetingsDisplay || 'inline'}
           copyPrefs={{ meetingDetails: prefs.copyMeetingDetails || 'full', textCase: prefs.copyCase || 'original' }}
+          calendars={calendars}
         />
       )}
 
@@ -266,6 +299,7 @@ function App() {
         <RadioPane
           radio={radio}
           screenRef={setScreenEl}
+          showToast={showToast}
           onStartFocus={() => {
             if (!radio.playing && !radio.connecting) radio.play();
             startPomodoro(null);
@@ -309,6 +343,7 @@ function App() {
         onClose={() => setShowHowTo(false)}
         howToTab={howToTab}
         setHowToTab={setHowToTab}
+        calendars={!!calendars}
       />
 
       {/* YouTube "TV": framed on the radio page, a corner mini-player while

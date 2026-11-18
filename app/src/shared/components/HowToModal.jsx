@@ -5,6 +5,7 @@ export default function HowToModal({
   onClose,
   howToTab,
   setHowToTab,
+  calendars = false,
 }) {
   if (!open) return null;
   return (
@@ -60,6 +61,7 @@ export default function HowToModal({
                     <p><b>Recent pages.</b> Quick access to the pages you've been working on, sorted by last edited. Click any page to jump straight to it.</p>
                     <p><b>Weekly stats.</b> Track your progress with a summary of tasks done, high-priority items open, and meetings scheduled for the week.</p>
                     <p><b>Personalized greeting.</b> Set your display name in Settings to see a personalized greeting based on the time of day.</p>
+                    <p><b>Command palette.</b> Press <kbd>⌘K</kbd> (Ctrl+K) anywhere to jump to a page, a day or a calendar, or to start a task, meeting or page.</p>
                   </div>
                 </section>
               )}
@@ -90,6 +92,7 @@ export default function HowToModal({
                       <div><code># Heading</code><span>up to four levels (##, ###, ####)</span></div>
                       <div><code>**bold**</code><span>bold text</span></div>
                       <div><code>*italic*</code><span>italic text</span></div>
+                      <div><code>==highlight==</code><span>highlighter stroke (<kbd>⌘</kbd><kbd>⇧</kbd><kbd>H</kbd>)</span></div>
                       <div><code>`code`</code><span>inline code</span></div>
                       <div><code>&gt; quote</code><span>block quote</span></div>
                       <div><code>- item</code><span>bullet list</span></div>
@@ -116,7 +119,11 @@ export default function HowToModal({
                   <div className="nmd-howto-walk">
                     <p><b>View modes.</b> Switch between Day, Workweek (Mon-Fri), and full Week view using the toggle in the header.</p>
                     <p><b>Navigation.</b> Use arrows to move between days/weeks. Click "Today" to jump back to the current date.</p>
-                    <p><b>Add tasks.</b> Click the "+" in any day column to add a task. Set priority (high/medium/low) and add subtasks from the edit dialog.</p>
+                    {calendars && (
+                      <p><b>Calendars.</b> Keep separate calendars — work, personal, a side project — and flip between them from the pill next to the date, or choose "All calendars" to see them together. Drag a calendar in that menu to reorder it. New tasks and meetings land on the calendar you're looking at; move one from its edit dialog. Removing a calendar keeps everything on it. Home shows all of them together.</p>
+                    )}
+                    <p><b>Add tasks.</b> Click the "+" in any day column to add a task. Double-click a task's name to rename it in place. Set priority (high/medium/low) and add subtasks from the edit dialog.</p>
+                    <p><b>Day view.</b> Meetings sit on a clock, with a line for the current time. Week and workweek keep the compact list.</p>
                     <p><b>Add meetings.</b> Click "Meeting" to schedule one. Set time, duration, and repeat options (daily, weekly, biweekly).</p>
                     <p><b>Link to pages.</b> Connect tasks or meetings to notebook pages for quick reference. Click the link to navigate directly.</p>
                     <p><b>Drag and drop.</b> Move tasks between days by dragging them to a different column.</p>

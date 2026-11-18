@@ -3,17 +3,21 @@ import DayColumn from './DayColumn';
 import TaskDialog from './TaskDialog';
 import MeetingDialog from './MeetingDialog';
 import MeetingsDrawer from './MeetingsDrawer';
+import CalendarSwitcher from './CalendarSwitcher';
 import { startOfWeek, addDays, fmtDate, fmtRange } from '../../shared/utils/time';
 import { expandRecurringMeetings } from './meetings';
 import { PRIO } from '../../shared/utils/constants';
 import { HelpIcon } from '../../shared/components/Tooltip';
 import { DoodleClockMini } from '../../shared/components/Doodles';
 
-export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage, onStartPomodoro, pomoStats, focusRequest, onFocusHandled, meetingsDisplay = 'inline', copyPrefs }) {
+// `calendars` is the useCalendars() API, or null when calendars aren't available
+// — then every task and meeting is shown, as it always was.
+export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByDate, setMeetingsByDate, showToast, notebooks, onNavigateToPage, onStartPomodoro, pomoStats, focusRequest, onFocusHandled, meetingsDisplay = 'inline', copyPrefs, calendars = null }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [draggingId, setDraggingId] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [editingMeeting, setEditingMeeting] = useState(null);
+  const [seedAddKey, setSeedAddKey] = useState(null);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('nmd_tracker_mode') || 'full');
   const todayDow = new Date().getDay();
   const [dayOffset, setDayOffset] = useState(todayDow === 0 ? 6 : todayDow - 1);
@@ -28,15 +32,20 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
   // navigate to its week/day and open the matching dialog.
   useEffect(() => {
     if (!focusRequest) return;
-    const { dateKey, taskId, meetingId } = focusRequest;
+    const { dateKey, taskId, meetingId, create, view } = focusRequest;
     const d = new Date(dateKey + 'T00:00:00');
     setWeekStart(startOfWeek(d));
     const dow = d.getDay();
-    if (viewMode === 'day') setDayOffset(dow === 0 ? 6 : dow - 1);
+    if (viewMode === 'day' || view === 'day') setDayOffset(dow === 0 ? 6 : dow - 1);
+    if (view === 'day') setViewMode('day');
     // Weekend items aren't visible in workweek view; widen so the dialog can resolve.
-    if (viewMode === 'workweek' && (dow === 0 || dow === 6)) setViewMode('full');
+    if (viewMode === 'workweek' && view !== 'day' && (dow === 0 || dow === 6)) setViewMode('full');
+    // The item may live on a calendar other than the one in view.
+    if (calendars && 'calendarId' in focusRequest) calendars.setActiveId(focusRequest.calendarId);
     if (taskId) setEditingTask({ dateKey, id: taskId });
     if (meetingId) setEditingMeeting({ dateKey, id: meetingId });
+    if (create === 'task') setSeedAddKey(dateKey);
+    if (create === 'meeting') setEditingMeeting({ dateKey, new: true });
     onFocusHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest]);
@@ -49,13 +58,27 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     viewMode === 'workweek' ? allDays.slice(0, 5) :
     allDays;
 
-  const expandedMeetings = useMemo(
-    () => expandRecurringMeetings(meetingsByDate, days),
+  // What's on screen is the active calendar's slice. The full maps stay the
+  // source of truth for every edit below, so other calendars are never touched.
+  const calendarView = calendars ? `${calendars.activeId}` : '';
+  const visibleTasks = useMemo(
+    () => (calendars ? calendars.filter(tasksByDate) : tasksByDate),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [meetingsByDate, days.map(d => fmtDate(d)).join(',')]
+    [tasksByDate, calendarView, calendars?.list]
+  );
+  const visibleMeetings = useMemo(
+    () => (calendars ? calendars.filter(meetingsByDate) : meetingsByDate),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [meetingsByDate, calendarView, calendars?.list]
   );
 
-  const getTasks = (d) => tasksByDate[fmtDate(d)] || [];
+  const expandedMeetings = useMemo(
+    () => expandRecurringMeetings(visibleMeetings, days),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleMeetings, days.map(d => fmtDate(d)).join(',')]
+  );
+
+  const getTasks = (d) => visibleTasks[fmtDate(d)] || [];
   const getMeetings = (d) => expandedMeetings[fmtDate(d)] || [];
 
   // ── Task operations ──────────────────────────────────────────────
@@ -73,7 +96,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
   };
 
   const addTask = (dateKey, title) => {
-    const t = { id: crypto.randomUUID(), title, done: false, priority: 'none', subtasks: [], created: Date.now() };
+    const t = { id: crypto.randomUUID(), title, done: false, priority: 'none', subtasks: [], created: Date.now(), ...calendars?.stamp() };
     updateTasks(dateKey, tasks => [...tasks, t]);
   };
 
@@ -82,7 +105,41 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
   };
 
   const deleteTask = (dateKey, id) => {
+    const list = tasksByDate[dateKey] || [];
+    const idx = list.findIndex(t => t.id === id);
+    const task = list[idx];
     updateTasks(dateKey, tasks => tasks.filter(t => t.id !== id));
+    if (!task) return;
+    showToast(`Deleted "${task.title || 'task'}"`, {
+      action: {
+        label: 'Undo',
+        onClick: () => updateTasks(dateKey, tasks => {
+          if (tasks.some(t => t.id === id)) return tasks;
+          const next = [...tasks];
+          next.splice(Math.min(idx, next.length), 0, task);
+          return next;
+        }),
+      },
+    });
+  };
+
+  // Snapshot a stored meeting so a delete / skip / end can be undone by
+  // putting the original row back exactly as it was.
+  const offerMeetingUndo = (dateKey, id, label) => {
+    const original = (meetingsByDate[dateKey] || []).find(m => m.id === id);
+    if (!original) return;
+    showToast(label, {
+      action: {
+        label: 'Undo',
+        onClick: () => setMeetingsByDate(prev => {
+          const list = prev[dateKey] || [];
+          const next = list.some(m => m.id === id)
+            ? list.map(m => (m.id === id ? original : m))
+            : [...list, original];
+          return { ...prev, [dateKey]: next };
+        }),
+      },
+    });
   };
 
   const duplicateTask = (dateKey, sourceTask) => {
@@ -133,6 +190,30 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     });
   };
 
+  // Long-press "Move to tomorrow", with an undo that puts the task back in
+  // its original slot (read from fresh state, since the toast outlives this render).
+  const moveTaskTomorrow = (fromKey, date, id) => {
+    const toKey = fmtDate(addDays(date, 1));
+    const idx = (tasksByDate[fromKey] || []).findIndex(t => t.id === id);
+    moveTask(id, toKey);
+    showToast('Moved to tomorrow', {
+      action: {
+        label: 'Undo',
+        onClick: () => setTasksByDate(prev => {
+          const task = (prev[toKey] || []).find(t => t.id === id);
+          if (!task) return prev;
+          const next = { ...prev };
+          const toList = next[toKey].filter(t => t.id !== id);
+          if (toList.length) next[toKey] = toList; else delete next[toKey];
+          const back = [...(next[fromKey] || [])];
+          back.splice(Math.max(0, Math.min(idx, back.length)), 0, task);
+          next[fromKey] = back;
+          return next;
+        }),
+      },
+    });
+  };
+
   // ── Meeting operations ───────────────────────────────────────────
 
   const writeMeeting = ({ fromKey, toKey, id, patch, isNew, rescheduleOccurrence }) => {
@@ -155,6 +236,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           repeat: 'none',
           notes: patch.notes,
           linkedPageId: patch.linkedPageId,
+          ...(patch.calendarId ? { calendarId: patch.calendarId } : null),
         }];
         return next;
       }
@@ -182,6 +264,15 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
         next[toKey] = [...(next[toKey] || []), meeting];
       }
       return next;
+    });
+  };
+
+  // An item just landed on a calendar that isn't the one in view — say where
+  // it went, with a way to follow it.
+  const announceCalendar = (verb, calendarId) => {
+    if (!calendars || (calendarId || null) === calendars.activeId) return;
+    showToast(`${verb} ${calendars.byId(calendarId).name}`, {
+      action: { label: 'Open', onClick: () => calendars.setActiveId(calendarId) },
     });
   };
 
@@ -295,7 +386,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
     if (!editingMeeting) return null;
     if (editingMeeting.new) {
       return {
-        meeting: { id: '', title: '', time: '', duration: '30', repeat: 'none', notes: '' },
+        meeting: { id: '', title: '', time: editingMeeting.time || '', duration: '30', repeat: 'none', notes: '' },
         isNew: true,
         dateKey: editingMeeting.dateKey,
       };
@@ -341,7 +432,8 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           )}
           {byPrio.high > 0 && <span className="nmd-pill" title="Open high-priority"><span className="nmd-task-prio-dot nmd-prio-high" style={{ marginRight: 5 }} /><b>{byPrio.high}</b> high</span>}
           {byPrio.med > 0 && <span className="nmd-pill"><span className="nmd-task-prio-dot nmd-prio-med" style={{ marginRight: 5 }} /><b>{byPrio.med}</b> med</span>}
-          <HelpIcon tip="Drag tasks between days. Click tasks to edit priority, add subtasks, or link to pages. Meetings can repeat daily, weekly, or biweekly — change a meeting's date from its edit dialog. Click the candle icon on any task to start a Pomodoro timer." position="bottom" />
+          {calendars && <CalendarSwitcher calendars={calendars} showToast={showToast} />}
+          <HelpIcon tip={"Drag tasks between days. Click a task to edit it, or double-click its name to rename it. Right-click a task (or press and hold on touch) for more options. Day view lays meetings on a clock; click an empty hour to add one there. Meetings can repeat daily, weekly, or biweekly." + (calendars ? ' The calendar menu on the right switches calendars, shows all of them at once, and lets you drag to reorder.' : '')} position="bottom" />
         </div>
       </header>
 
@@ -365,13 +457,18 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               showToast={showToast}
               onEditTask={(id) => setEditingTask({ dateKey: key, id })}
               onEditMeeting={(id) => setEditingMeeting({ dateKey: key, id })}
-              onAddMeeting={() => setEditingMeeting({ dateKey: key, new: true })}
+              onAddMeeting={(time) => setEditingMeeting({ dateKey: key, new: true, time: typeof time === 'string' ? time : '' })}
               meetings={getMeetings(d)}
               now={now}
               showMeetings={meetingsDisplay !== 'drawer'}
+              timeline={isDayView}
+              seedAdd={seedAddKey === key}
+              onSeedAddHandled={() => setSeedAddKey(null)}
               copyPrefs={copyPrefs}
               onStartPomodoro={onStartPomodoro}
               onDuplicate={(task) => duplicateTask(key, task)}
+              onMoveTaskTomorrow={(id) => moveTaskTomorrow(key, d, id)}
+              onDeleteTask={(id) => deleteTask(key, id)}
             />
           );
         })}
@@ -395,6 +492,12 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           onUpdate={(p) => updateTask(taskDialogData.dateKey, taskDialogData.task.id, p)}
           onDelete={() => { deleteTask(taskDialogData.dateKey, taskDialogData.task.id); setEditingTask(null); }}
           onMove={(toKey) => { moveTask(taskDialogData.task.id, toKey); setEditingTask(null); }}
+          calendars={calendars}
+          onMoveCalendar={(calendarId) => {
+            updateTask(taskDialogData.dateKey, taskDialogData.task.id, { calendarId: calendarId || undefined });
+            setEditingTask(null);
+            announceCalendar('Moved to', calendarId);
+          }}
           onClose={() => setEditingTask(null)}
           notebooks={notebooks}
           onNavigateToPage={onNavigateToPage}
@@ -409,8 +512,10 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           dateKey={meetingDialogData.dateKey}
           notebooks={notebooks}
           onNavigateToPage={onNavigateToPage}
+          calendars={calendars}
           onUpdate={(patch, saveDateKey) => {
             const target = saveDateKey || meetingDialogData.dateKey;
+            announceCalendar(meetingDialogData.isNew ? 'Added to' : 'Moved to', patch.calendarId);
             if (meetingDialogData.isNew) {
               writeMeeting({ toKey: target, patch, isNew: true });
             } else {
@@ -436,14 +541,13 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           }}
           onDelete={() => {
             const m = meetingDialogData.meeting;
-            if (m._recurring) {
-              deleteMeeting(m.sourceDate, m.sourceId);
-            } else {
-              deleteMeeting(meetingDialogData.dateKey, m.id);
-            }
+            const [key, id] = m._recurring ? [m.sourceDate, m.sourceId] : [meetingDialogData.dateKey, m.id];
+            offerMeetingUndo(key, id, `Deleted "${m.title || 'meeting'}"`);
+            deleteMeeting(key, id);
           }}
           onDeleteOccurrence={() => {
             const m = meetingDialogData.meeting;
+            offerMeetingUndo(m._recurring ? m.sourceDate : meetingDialogData.dateKey, m._recurring ? m.sourceId : m.id, 'Skipped this one');
             if (m._recurring) {
               skipMeetingOccurrence(m.sourceDate, m.sourceId, meetingDialogData.dateKey);
             } else {
@@ -452,6 +556,7 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
           }}
           onDeleteFuture={() => {
             const m = meetingDialogData.meeting;
+            offerMeetingUndo(m._recurring ? m.sourceDate : meetingDialogData.dateKey, m._recurring ? m.sourceId : m.id, 'Ended the series here');
             if (m._recurring) {
               endMeetingFrom(m.sourceDate, m.sourceId, meetingDialogData.dateKey);
             } else {

@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
 import rehypeSourcePosition from './rehype-source-position';
-import { encodeSpacedLinkUrls, remarkUnderline } from './remark-notemd';
+import { encodeSpacedLinkUrls, remarkUnderline, remarkHighlight } from './remark-notemd';
 import {
   IMAGE_REF_SCHEME, IMAGE_SIZES, resolveImageSrc, parseImageRef, imageMaxWidthForSize,
 } from '../../../shared/lib/uploadImage';
@@ -126,7 +126,7 @@ export default function MarkdownView({ source, onNavigate, onResizeImage }) {
   return (
     <div className="nmd-rendered prose">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkUnderline]}
+        remarkPlugins={[remarkGfm, remarkUnderline, remarkHighlight]}
         rehypePlugins={[rehypeSourcePosition, rehypeSlug, rehypeHighlight]}
         urlTransform={pageUrlTransform}
         components={buildComponents(onNavigate, onResizeImage)}

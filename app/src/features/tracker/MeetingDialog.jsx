@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import PageLinkPicker from '../../shared/components/PageLinkPicker';
 import { addDays, fmtDate } from '../../shared/utils/time';
 import DatePicker from './DatePicker';
+import CalendarChips from './CalendarChips';
 
 const REPEAT_OPTIONS = [
   { value: 'none', label: 'No repeat' },
@@ -27,7 +28,7 @@ function exclusiveFromLastDay(lastKey) {
   return fmtDate(addDays(new Date(lastKey + 'T00:00:00'), 1));
 }
 
-export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, onDeleteOccurrence, onDeleteFuture, onClose, notebooks, onNavigateToPage }) {
+export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, onDeleteOccurrence, onDeleteFuture, onClose, notebooks, onNavigateToPage, calendars = null }) {
   const [title, setTitle] = useState(meeting.title);
   const [day, setDay] = useState(dateKey);
   const [time, setTime] = useState(meeting.time || '');
@@ -36,6 +37,10 @@ export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, on
   const [endLast, setEndLast] = useState(() => lastDayFromExclusive(meeting.endDate));
   const [notes, setNotes] = useState(meeting.notes || '');
   const [linkedPageId, setLinkedPageId] = useState(meeting.linkedPageId || null);
+  // A new meeting starts on the calendar in view; an existing one stays where it is.
+  const [calendarId, setCalendarId] = useState(() => (
+    calendars ? (meeting.id ? calendars.idOf(meeting) : calendars.activeId) : null
+  ));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pickerFor, setPickerFor] = useState(null);
   const [pickerPos, setPickerPos] = useState(null);
@@ -100,6 +105,7 @@ export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, on
         notes,
         linkedPageId,
         endDate: repeats ? exclusiveFromLastDay(endLast) : null,
+        ...(calendars ? { calendarId: calendarId || undefined } : null),
       },
       day,
     );
@@ -242,6 +248,16 @@ export default function MeetingDialog({ meeting, dateKey, onUpdate, onDelete, on
               style={{ minHeight: 56, resize: 'vertical' }}
             />
           </div>
+
+          {calendars?.multiple && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span className="nmd-mtg-field-label">Calendar</span>
+              <CalendarChips calendars={calendars} value={calendarId} onChange={setCalendarId} />
+              {isRecurringInstance && calendarId !== calendars.idOf(meeting) && (
+                <span className="nmd-mtg-date-hint">Moves the whole series.</span>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span className="nmd-mtg-field-label">Linked page</span>

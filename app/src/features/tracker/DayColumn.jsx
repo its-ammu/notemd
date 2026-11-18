@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Task from './Task';
+import DayTimeline from './DayTimeline';
 import { DAY_NAMES } from '../../shared/utils/constants';
-import { DoodleClockMini, DoodleClockAdd, IconCopy, IconCheck, IconPlus } from '../../shared/components/Doodles';
+import EmptyState from '../../shared/components/EmptyState';
+import {
+  DoodleClockMini, DoodleClockAdd, IconCopy, IconCheck, IconPlus,
+  DoodleMug, DoodlePlant, DoodlePlane, DoodleNote, DoodleSun, DoodleMoon,
+} from '../../shared/components/Doodles';
 import { isMeetingOver } from './meetings';
 
 function fmtTime(t) {
@@ -20,6 +25,18 @@ function fmtDuration(d) {
   return m ? `${h}h${m}m` : `${h}h`;
 }
 
+/* A faint doodle for an empty day in the week grid — a different one for each
+   weekday so a quiet week reads as a sketchbook margin, not a row of blanks. */
+const EMPTY_DAY_DOODLES = [
+  { Doodle: DoodleMug, label: 'coffee first' },      // Mon
+  { Doodle: DoodlePlant, label: 'room to grow' },    // Tue
+  { Doodle: DoodlePlane, label: 'clear skies' },     // Wed
+  { Doodle: DoodleNote, label: 'put a record on' },  // Thu
+  { Doodle: DoodleSun, label: 'sunny outlook' },     // Fri
+  { Doodle: DoodleSun, label: 'all yours' },         // Sat
+  { Doodle: DoodleMoon, label: 'rest up' },          // Sun
+];
+
 /* Case transform for copied text, per the user's copy settings. */
 function applyCase(text, mode) {
   if (mode === 'lower') return text.toLowerCase();
@@ -28,12 +45,28 @@ function applyCase(text, mode) {
   return text;
 }
 
-export default function DayColumn({ date, tasks, meetings, showMeetings = true, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onEditMeeting, onAddMeeting, onStartPomodoro, onDuplicate, copyPrefs = {}, now }) {
+function EmptyDay({ dayIdx }) {
+  const { Doodle, label } = EMPTY_DAY_DOODLES[dayIdx];
+  return (
+    <div className="nmd-day-empty-art" aria-label={`Nothing planned — ${label}`} role="img">
+      <Doodle size={44} />
+      <span className="nmd-day-empty-label">{label}</span>
+    </div>
+  );
+}
+
+export default function DayColumn({ date, tasks, meetings, showMeetings = true, timeline = false, calendarName = null, seedAdd = false, onSeedAddHandled, isToday, isWeekend, onAddTask, onUpdateTask, onDropTask, onDragStart, onDragEnd, draggingId, showToast, onEditTask, onEditMeeting, onAddMeeting, onStartPomodoro, onDuplicate, onMoveTaskTomorrow, onDeleteTask, copyPrefs = {}, now }) {
   const [adding, setAdding] = useState(false);
   const [addText, setAddText] = useState('');
   const [copied, setCopied] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [dropInfo, setDropInfo] = useState(null); // { id, edge: 'top' | 'bottom' }
+
+  useEffect(() => {
+    if (!seedAdd) return;
+    setAdding(true);
+    onSeedAddHandled?.();
+  }, [seedAdd]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Where a task dropped onto `targetIdx` should land: before it (top half) or
   // after it (bottom half). Returns the id of the task to insert in front of,
@@ -97,6 +130,83 @@ export default function DayColumn({ date, tasks, meetings, showMeetings = true, 
   const dayOfWeek = date.getDay();
   const dayNameIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const meetingCount = meetings ? meetings.length : 0;
+  const doneCount = tasks.filter(t => t.done).length;
+
+  const taskList = (
+    <>
+      {tasks.map((t, idx) => (
+        <Task
+          key={t.id}
+          task={t}
+          onUpdate={(patch) => onUpdateTask(t.id, patch)}
+          onDragStart={onDragStart}
+          onDragEnd={() => { onDragEnd(); setDropInfo(null); }}
+          dragging={draggingId === t.id}
+          dropEdge={dropInfo && dropInfo.id === t.id ? dropInfo.edge : null}
+          onTaskDragOver={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'move';
+            setDragOver(false);
+            const rect = e.currentTarget.getBoundingClientRect();
+            const after = e.clientY > rect.top + rect.height / 2;
+            setDropInfo({ id: t.id, edge: after ? 'bottom' : 'top' });
+          }}
+          onTaskDrop={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOver(false);
+            setDropInfo(null);
+            const id = e.dataTransfer.getData('text/plain') || draggingId;
+            if (id) onDropTask(id, dropTargetBeforeId(e, idx));
+          }}
+          onEdit={onEditTask}
+          calendarName={calendarName ? calendarName(t) : null}
+          onStartPomodoro={onStartPomodoro}
+          onDuplicate={onDuplicate}
+          onMoveTomorrow={onMoveTaskTomorrow}
+          onDelete={onDeleteTask}
+        />
+      ))}
+      {adding ? (
+        <input
+          autoFocus
+          className="nmd-add-task-input"
+          placeholder="What needs doing?"
+          value={addText}
+          onChange={e => setAddText(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') submitAdd();
+            if (e.key === 'Escape') { setAdding(false); setAddText(''); }
+          }}
+          onBlur={submitAdd}
+        />
+      ) : (
+        <button
+          className={'nmd-add-task' + (dropInfo?.id === '__end__' ? ' drop-target' : '')}
+          onClick={() => setAdding(true)}
+          onDragOver={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'move';
+            setDragOver(false);
+            setDropInfo({ id: '__end__', edge: 'bottom' });
+          }}
+          onDrop={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOver(false);
+            setDropInfo(null);
+            const id = e.dataTransfer.getData('text/plain') || draggingId;
+            if (id) onDropTask(id, null);
+          }}
+        >
+          <IconPlus />
+          Add task
+        </button>
+      )}
+    </>
+  );
 
   return (
     <div
@@ -122,9 +232,11 @@ export default function DayColumn({ date, tasks, meetings, showMeetings = true, 
           <span className="nmd-day-num">{dateNum}</span>
         </div>
         <div className="nmd-day-actions">
-          <button className="nmd-day-btn" title="Add meeting" onClick={onAddMeeting}>
-            <DoodleClockAdd size={15} />
-          </button>
+          {!(timeline && showMeetings) && (
+            <button className="nmd-day-btn" title="Add meeting" onClick={() => onAddMeeting()}>
+              <DoodleClockAdd size={15} />
+            </button>
+          )}
           <button
             className={'nmd-day-btn' + (copied ? ' copied' : '')}
             title="Copy entries"
@@ -135,97 +247,76 @@ export default function DayColumn({ date, tasks, meetings, showMeetings = true, 
         </div>
       </div>
 
-      <div className="nmd-day-body">
-        {tasks.length === 0 && (meetingCount === 0 || !showMeetings) && !adding && (
-          <div className="nmd-day-empty">—</div>
-        )}
-        {showMeetings && meetingCount > 0 && (
-          <div className="nmd-day-meetings">
-            {[...meetings]
-              .sort((a, b) => (a.time || '99').localeCompare(b.time || '99'))
-              .map((m) => (
-                <button
-                  key={m.id}
-                  className={'nmd-day-meeting' + (isMeetingOver(date, m, now) ? ' done' : '')}
-                  onClick={() => onEditMeeting(m.id)}
-                  title={m.title + (m.time ? ` · ${fmtTime(m.time)}` : '') + (m.duration ? ` (${fmtDuration(m.duration)})` : '')}
-                >
-                  <DoodleClockMini size={14} className="nmd-day-meeting-clock" />
-                  <span className="nmd-day-meeting-title">{m.title}</span>
-                  {m.time && <span className="nmd-day-meeting-time">{fmtTime(m.time)}</span>}
+      {timeline ? (
+        <div className={'nmd-day-body nmd-day-split' + (showMeetings ? '' : ' tasks-only')}>
+          <section className="nmd-day-pane nmd-day-pane-tasks" aria-label="Tasks">
+            <div className="nmd-day-pane-head">
+              <h3 className="nmd-day-pane-title">Tasks</h3>
+              {tasks.length > 0 && (
+                <span className="nmd-day-pane-count"><b>{doneCount}</b>/{tasks.length} done</span>
+              )}
+            </div>
+            <div className="nmd-day-pane-body">
+              {tasks.length === 0 && !adding && (
+                <EmptyState type="dayTasks" compact />
+              )}
+              {taskList}
+            </div>
+          </section>
+          {showMeetings && (
+            <section className="nmd-day-pane nmd-day-pane-schedule" aria-label="Schedule">
+              <div className="nmd-day-pane-head">
+                <h3 className="nmd-day-pane-title">Schedule</h3>
+                {meetingCount > 0 && (
+                  <span className="nmd-day-pane-count"><b>{meetingCount}</b> {meetingCount === 1 ? 'meeting' : 'meetings'}</span>
+                )}
+                <button type="button" className="nmd-day-pane-add" onClick={() => onAddMeeting()} title="Add meeting" aria-label="Add meeting">
+                  <IconPlus />
                 </button>
-              ))}
-          </div>
-        )}
-        {tasks.map((t, idx) => (
-          <Task
-            key={t.id}
-            task={t}
-            onUpdate={(patch) => onUpdateTask(t.id, patch)}
-            onDragStart={onDragStart}
-            onDragEnd={() => { onDragEnd(); setDropInfo(null); }}
-            dragging={draggingId === t.id}
-            dropEdge={dropInfo && dropInfo.id === t.id ? dropInfo.edge : null}
-            onTaskDragOver={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              e.dataTransfer.dropEffect = 'move';
-              setDragOver(false);
-              const rect = e.currentTarget.getBoundingClientRect();
-              const after = e.clientY > rect.top + rect.height / 2;
-              setDropInfo({ id: t.id, edge: after ? 'bottom' : 'top' });
-            }}
-            onTaskDrop={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              setDragOver(false);
-              setDropInfo(null);
-              const id = e.dataTransfer.getData('text/plain') || draggingId;
-              if (id) onDropTask(id, dropTargetBeforeId(e, idx));
-            }}
-            onEdit={onEditTask}
-            onStartPomodoro={onStartPomodoro}
-            onDuplicate={onDuplicate}
-          />
-        ))}
-        {adding ? (
-          <input
-            autoFocus
-            className="nmd-add-task-input"
-            placeholder="What needs doing?"
-            value={addText}
-            onChange={e => setAddText(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') submitAdd();
-              if (e.key === 'Escape') { setAdding(false); setAddText(''); }
-            }}
-            onBlur={submitAdd}
-          />
-        ) : (
-          <button
-            className={'nmd-add-task' + (dropInfo?.id === '__end__' ? ' drop-target' : '')}
-            onClick={() => setAdding(true)}
-            onDragOver={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              e.dataTransfer.dropEffect = 'move';
-              setDragOver(false);
-              setDropInfo({ id: '__end__', edge: 'bottom' });
-            }}
-            onDrop={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              setDragOver(false);
-              setDropInfo(null);
-              const id = e.dataTransfer.getData('text/plain') || draggingId;
-              if (id) onDropTask(id, null);
-            }}
-          >
-            <IconPlus />
-            Add task
-          </button>
-        )}
-      </div>
+              </div>
+              <div className="nmd-day-pane-body">
+                {meetingCount === 0 && (
+                  <div className="nmd-day-pane-empty">No meetings. Suspiciously peaceful. Click an hour to add one.</div>
+                )}
+                <DayTimeline date={date} meetings={meetings || []} now={now} onEdit={onEditMeeting} onAddAt={(time) => onAddMeeting(time)} calendarName={calendarName} />
+              </div>
+            </section>
+          )}
+        </div>
+      ) : (
+        <div className="nmd-day-body">
+          {tasks.length === 0 && (meetingCount === 0 || !showMeetings) && !adding && (
+            <EmptyDay dayIdx={dayNameIdx} />
+          )}
+          {showMeetings && meetingCount > 0 && (
+            <div className="nmd-day-meetings">
+              {[...meetings]
+                .sort((a, b) => (a.time || '99').localeCompare(b.time || '99'))
+                .map((m) => (
+                  <button
+                    key={m.id}
+                    className={'nmd-day-meeting' + (calendarName ? ' has-cal' : '') + (isMeetingOver(date, m, now) ? ' done' : '')}
+                    onClick={() => onEditMeeting(m.id)}
+                    title={m.title + (m.time ? ` · ${fmtTime(m.time)}` : '') + (m.duration ? ` (${fmtDuration(m.duration)})` : '')}
+                  >
+                    <span className="nmd-day-meeting-line">
+                      <DoodleClockMini size={14} className="nmd-day-meeting-clock" />
+                      <span className="nmd-day-meeting-title">{m.title}</span>
+                      {!calendarName && m.time && <span className="nmd-day-meeting-time">{fmtTime(m.time)}</span>}
+                    </span>
+                    {calendarName && (
+                      <span className="nmd-day-meeting-meta">
+                        {m.time && <span className="nmd-day-meeting-time">{fmtTime(m.time)}</span>}
+                        <span className="nmd-cal-tag">{calendarName(m)}</span>
+                      </span>
+                    )}
+                  </button>
+                ))}
+            </div>
+          )}
+          {taskList}
+        </div>
+      )}
     </div>
   );
 }

@@ -11,12 +11,12 @@ function nextSleepStep(mins) {
   return null;
 }
 
-export default function RadioPane({ radio, onStartFocus, screenRef }) {
+export default function RadioPane({ radio, onStartFocus, screenRef, showToast }) {
   const {
     stations, station, playing, connecting, playerReady,
     volume, setVolume, sleepMins, setSleepMinutes,
     toggle, selectStation,
-    addCustomStation, updateCustomStation, deleteCustomStation,
+    addCustomStation, updateCustomStation, deleteCustomStation, restoreCustomStation,
   } = radio;
 
   const [dialog, setDialog] = useState(null); // null | { mode: 'add' } | { mode: 'edit', station }
@@ -37,8 +37,11 @@ export default function RadioPane({ radio, onStartFocus, screenRef }) {
 
   const handleDelete = (s, e) => {
     e.stopPropagation();
-    if (!confirm(`Remove "${s.name}" from your custom radios?`)) return;
+    const index = stations.filter(x => x.custom).findIndex(x => x.id === s.id);
     deleteCustomStation(s.id);
+    showToast?.(`Removed "${s.name}"`, {
+      action: { label: 'Undo', onClick: () => restoreCustomStation(s, index) },
+    });
   };
 
   return (

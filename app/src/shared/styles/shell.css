@@ -562,3 +562,44 @@ body.nmd-focus .nmd-sidebar { display: none; }
   font-family: inherit; font-size: 12px;
 }
 
+
+/* Loading: a faint outline of the app instead of a "Loading…" card */
+.nmd-loading-shell {
+  position: relative;
+  display: grid; grid-template-columns: 52px 1fr;
+  height: 100vh; overflow: hidden;
+  background: var(--bg);
+  animation: nmd-fade var(--dur-med) var(--ease);
+}
+.nmd-loading-rail {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 18px 0;
+  border-right: 1px solid var(--border);
+}
+.nmd-loading-main { display: flex; flex-direction: column; min-width: 0; padding: 18px 16px 16px; gap: 14px; }
+.nmd-loading-head { display: flex; align-items: center; gap: 12px; padding: 0 4px; }
+.nmd-loading-sheet {
+  flex: 1; min-height: 0;
+  background: var(--bg-raised);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 22px 24px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.nmd-loading-line {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.nmd-skel {
+  display: inline-block; border-radius: 999px;
+  background: var(--bg-hover);
+  animation: nmd-skel-breathe 1.6s var(--ease) infinite;
+}
+.nmd-skel-dot { width: 26px; height: 26px; border-radius: 8px; }
+.nmd-skel-box { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+@keyframes nmd-skel-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.nmd-loading-label {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  font-size: 12px; color: var(--fg4);
+}

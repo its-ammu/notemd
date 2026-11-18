@@ -750,6 +750,13 @@ body.nmd-resizing-sidebar * { cursor: col-resize !important; }
   font-weight: 400;
 }
 
+/* `==text==` in the source editor — the same highlighter stroke the rendered
+   page shows (`.prose mark`), with the markers themselves faded back. */
+.nmd-cm-highlight { background: var(--marker); }
+.nmd-cm-highlight-mark { color: var(--fg4); }
+.nmd-cm-highlight-mark.open { border-radius: 4px 0 0 5px; }
+.nmd-cm-highlight-mark.close { border-radius: 0 5px 4px 0; }
+
 /* Inline reference chips inside the source editor (image / page links).
    Replaces the raw `![alt](url)` / `[Title](page:id)` markdown so the long
    Supabase URL or page id is never exposed while editing. */
@@ -1063,7 +1070,7 @@ body.nmd-resizing-sidebar * { cursor: col-resize !important; }
   color: var(--fg1); border-bottom: 1px solid var(--border);
 }
 .nmd-palette input::placeholder { color: var(--fg4); }
-.nmd-palette-list { display: flex; flex-direction: column; padding: 6px; }
+.nmd-palette-list { display: flex; flex-direction: column; padding: 6px; max-height: min(380px, 52vh); overflow-y: auto; }
 .nmd-palette-item {
   display: flex; align-items: center; justify-content: space-between;
   padding: 9px 12px; border-radius: var(--radius-md);
@@ -1074,6 +1081,14 @@ body.nmd-resizing-sidebar * { cursor: col-resize !important; }
 .nmd-palette-item:hover, .nmd-palette-item.sel { background: var(--bg-hover); }
 .nmd-palette-item.danger { color: var(--danger); }
 .nmd-palette-empty { padding: 16px; font-size: 13px; color: var(--fg3); text-align: center; }
+.nmd-palette-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nmd-palette-hint { flex: none; margin-left: 12px; color: var(--fg4); font-size: 12px; }
+.nmd-palette-foot {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 8px 14px; border-top: 1px solid var(--border);
+  color: var(--fg4); font-family: var(--font-mono); font-size: 11px;
+}
+.nmd-palette .nmd-menu-label { padding-left: 12px; }
 
 /* Contextual tooltips */
 .nmd-tip-trigger {
@@ -1471,3 +1486,9 @@ body.nmd-resizing-sidebar * { cursor: col-resize !important; }
   white-space: nowrap;
 }
 
+
+/* Inside a pane: smaller doodle, tighter spacing */
+.nmd-empty-state.compact { padding: 20px 12px 12px; }
+.nmd-empty-state.compact .nmd-empty-icon { margin-bottom: 8px; }
+.nmd-empty-state.compact .nmd-empty-title { font-size: 13px; }
+.nmd-empty-state.compact .nmd-empty-desc { font-size: 12.5px; margin-bottom: 4px; }

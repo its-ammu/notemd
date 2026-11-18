@@ -33,6 +33,13 @@ const STATES = {
     action: 'Schedule a meeting',
     tip: 'Click "Meeting" to add one',
   },
+  dayTasks: {
+    icon: <DoodleCheck size={40} />,
+    title: 'Nothing on the list',
+    desc: 'Add a task below, or enjoy the quiet.',
+    action: null,
+    tip: null,
+  },
   search: {
     icon: <DoodleMagnifier />,
     title: 'Nothing turned up',
@@ -56,21 +63,25 @@ const STATES = {
   },
 };
 
-export default function EmptyState({ type, onAction }) {
+/* One empty-state look for the whole app: doodle, title, one wry line, and
+   either an action button or (when there's nothing to click) a quiet tip.
+   `compact` is for empty states inside a pane rather than a whole page. */
+export default function EmptyState({ type, onAction, compact = false }) {
   const state = STATES[type];
   if (!state) return null;
+  const showAction = state.action && onAction;
 
   return (
-    <div className="nmd-empty-state">
+    <div className={'nmd-empty-state' + (compact ? ' compact' : '')}>
       <div className="nmd-empty-icon">{state.icon}</div>
       <h3 className="nmd-empty-title">{state.title}</h3>
       <p className="nmd-empty-desc">{state.desc}</p>
-      {state.action && onAction && (
+      {showAction && (
         <button className="nmd-empty-action" onClick={onAction}>
           {state.action}
         </button>
       )}
-      <span className="nmd-empty-tip">{state.tip}</span>
+      {!showAction && state.tip && <span className="nmd-empty-tip">{state.tip}</span>}
     </div>
   );
 }

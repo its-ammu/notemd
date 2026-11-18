@@ -221,7 +221,6 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
 
   const updateNb = (id, patch) => setNotebooks(nbs => nbs.map(nb => nb.id === id ? { ...nb, ...patch } : nb));
   const deleteNb = (id) => {
-    if (!confirm('Delete this notebook and all its pages?')) return;
     const idx = notebooks.findIndex(nb => nb.id === id);
     const nb = notebooks[idx];
     setNotebooks(nbs => nbs.filter(n => n.id !== id));
@@ -503,7 +502,7 @@ export default function NotebooksPane({ notebooks, setNotebooks, activeSel, setA
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
                 )}
               </button>
-              <HelpIcon tip="Read mode renders your markdown. Edit mode lets you write. Use # for headings, **bold**, *italic*, - for lists." position="bottom" />
+              <HelpIcon tip="Read mode renders your markdown. Edit mode lets you write. Use # for headings, **bold**, *italic*, ==highlight==, - for lists." position="bottom" />
             </header>
             <div className="nmd-tags-bar">
               {(activePage.tags || []).map(tag => (

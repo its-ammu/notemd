@@ -374,6 +374,9 @@
   background: var(--bg); color: var(--fg1);
   font-size: 13px; outline: none;
 }
+/* Which calendar a Today row belongs to — only shown once there are several. */
+/* The calendar picker sits in the row as one more field, same box as the inputs. */
+.nmd-home-quickadd-cal { max-width: 150px; height: 38px; }
 .nmd-home-quickadd-submit {
   padding: 10px 16px; border-radius: 8px;
   background: var(--accent-blue); color: #fff;

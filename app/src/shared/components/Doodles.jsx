@@ -314,6 +314,35 @@ export function DoodleNote({ size = 26, className = '' }) {
   );
 }
 
+/* A sprout in a lopsided pot, for a quiet empty day. */
+export function DoodlePlant({ size = 52, className = '' }) {
+  return (
+    <svg className={'nmd-doodle ' + className} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+      <g transform="rotate(2 32 40)">
+        <path {...ink} d="M19 40 C26 41 38 41 45 39 C44 46 42 52 40 55 C35 56 29 56 24 55 C22 51 20 46 19 40 Z" />
+        <path {...ink} strokeWidth="1.8" d="M17 40 C27 38 37 38 47 38" />
+        <path {...ink} strokeWidth="1.9" d="M32 38 C32 31 31 25 33 19" />
+        <path {...ink} strokeWidth="1.9" d="M32 29 C26 30 20 26 19 20 C25 19 31 22 32 29 Z" />
+        <path {...ink} strokeWidth="1.9" d="M33 22 C37 16 43 14 48 15 C47 21 41 25 33 22 Z" />
+      </g>
+    </svg>
+  );
+}
+
+/* A paper plane mid-glide, trailing a loopy dashed path. */
+export function DoodlePlane({ size = 52, className = '' }) {
+  return (
+    <svg className={'nmd-doodle ' + className} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+      <g transform="rotate(-6 36 26)">
+        <path {...ink} d="M24 30 C34 25 46 19 56 14 C52 24 48 34 44 42 C40 38 37 35 34 33 C31 32 27 31 24 30 Z" />
+        <path {...ink} strokeWidth="1.8" d="M34 33 C41 26 49 20 56 14" />
+        <path {...ink} strokeWidth="1.8" d="M34 33 C34 37 35 40 36 43 C38 41 39 39 40 38" />
+      </g>
+      <path {...ink} strokeWidth="1.6" strokeDasharray="3 4" opacity="0.6" d="M22 36 C14 40 8 46 12 50 C16 54 22 48 18 44" />
+    </svg>
+  );
+}
+
 /* A sketchy oval ring, used to circle a word like a margin note. */
 export function DoodleRing({ className = '' }) {
   return (
