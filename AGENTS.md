@@ -90,7 +90,7 @@ Tracker calendars (`shared/utils/calendars.js`, `features/tracker/useCalendars.j
 
 - No `calendarId` (NULL `calendar_id`) means the **default calendar** — which is what every item written before calendars existed looks like. Never backfill it.
 - The default calendar has no row until it's renamed; then a single `is_default` row carries its name. Calendars have no colour — colour in the tracker means priority. Items never reference that row.
-- `tasksByDate` / `meetingsByDate` always hold every calendar's items. The tracker filters to the active calendar for display only; "All calendars" shows every one, labelled by name. All edits go through the full maps. Home shows all calendars.
+- `tasksByDate` / `meetingsByDate` always hold every calendar's items. The tracker filters to the active calendar for display only; "All calendars" shows every one, with no per-item calendar label (it was too busy). All edits go through the full maps. Home shows all calendars.
 - Calendar order is the array order (the `position` column). The default calendar stays first.
 - The feature must keep working when the `calendars` table is missing (migration not yet run) and alongside clients that don't know about it (older builds, the iOS app): `fetchAllData` reports `calendarsSupported`, and `pushChanges` only sends `calendar_id` when it's true.
 - Removing a calendar moves its items to the default calendar; it never deletes them.

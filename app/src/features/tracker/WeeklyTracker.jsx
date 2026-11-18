@@ -462,7 +462,6 @@ export default function WeeklyTracker({ tasksByDate, setTasksByDate, meetingsByD
               now={now}
               showMeetings={meetingsDisplay !== 'drawer'}
               timeline={isDayView}
-              calendarName={calendars?.viewingAll ? (item) => calendars.of(item).name : null}
               seedAdd={seedAddKey === key}
               onSeedAddHandled={() => setSeedAddKey(null)}
               copyPrefs={copyPrefs}
